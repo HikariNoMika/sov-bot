@@ -142,7 +142,7 @@ client.on('messageCreate', async (message) => {
     const content = message.content.toLowerCase();
 
     // --------------------------------------------
-    // 0) !WELCOME COMMAND (preview for moderators)
+    // 0) COMMANDS
     // --------------------------------------------
     if (content === '!welcome') {
       if (!canReview(message.member)) return;
@@ -151,6 +151,18 @@ client.on('messageCreate', async (message) => {
         content: `👋 Welcome preview for ${message.author}`,
         ...buildWelcomeLanding(message.member)
       });
+      return;
+    }
+
+    if (content === '!rules') {
+      const rulesList = serverRules.rules.map((r, i) => `${i + 1}. ${r}`).join('\n');
+      const embed = new EmbedBuilder()
+        .setColor(0x57F287)
+        .setTitle(serverRules.title)
+        .setDescription(serverRules.description)
+        .addFields({ name: '📜 Rules', value: rulesList });
+
+      await message.channel.send({ embeds: [embed] });
       return;
     }
 
