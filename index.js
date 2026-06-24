@@ -26,6 +26,18 @@ const client = new Client({
 // Stores pending bad-word reviews temporarily while bot is running
 const pendingReviews = new Map();
 
+// Stores rules embed data
+const serverRules = config.serverRules || {
+  title: 'Server Rules',
+  description: 'Follow the rules to keep the server safe and fun for everyone.',
+  rules: [
+    'Be respectful to everyone',
+    'No explicit or inappropriate content',
+    'Follow Discord ToS',
+    'Use channels for their intended purpose'
+  ]
+};
+
 client.once('ready', () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 });
@@ -61,7 +73,7 @@ function canReview(member) {
 }
 
 // ----------------------------------------------------
-// WELCOME MESSAGE
+// WELCOME LANDING PAGE
 // ----------------------------------------------------
 client.on('guildMemberAdd', async (member) => {
   try {
@@ -73,26 +85,42 @@ client.on('guildMemberAdd', async (member) => {
 
     const embed = new EmbedBuilder()
       .setColor(0x57F287)
-      .setTitle('🎉 Welcome to the Server!')
+      .setTitle(`🎉 Welcome to ${member.guild.name}!`)
       .setDescription(
-        `Hello ${member}, welcome to **${member.guild.name}**!\n\n` +
-        `Please read the rules and use the proper channels for media and files.`
+        `Hello ${member}, welcome!\n\n` +
+        `We're glad to have you here. Use the buttons below to get started.`
       )
       .addFields(
         {
-          name: '📌 Reminders',
+          name: '📌 Quick Tips',
           value:
-            '• Be respectful\n' +
-            '• Avoid explicit or inappropriate words\n' +
-            '• Use the correct channels for files and videos'
+            '• Click **📜 Rules** to see the server rules\n' +
+            '• Click **📁 Channels** to see channel guides\n' +
+            '• Click **🆘 Help** if you need assistance'
         }
       )
       .setThumbnail(member.user.displayAvatarURL())
       .setTimestamp();
 
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('welcome_rules')
+        .setLabel('📜 Rules')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('welcome_channels')
+        .setLabel('📁 Channels')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('welcome_help')
+        .setLabel('🆘 Help')
+        .setStyle(ButtonStyle.Secondary)
+    );
+
     await channel.send({
       content: `${member}`,
-      embeds: [embed]
+      embeds: [embed],
+      components: [row]
     });
   } catch (err) {
     console.error('Welcome error:', err);
@@ -223,6 +251,49 @@ client.on('interactionCreate', async (interaction) => {
         content: '❌ You are not allowed to review moderated messages.',
         ephemeral: true
       });
+    }
+
+    // --------------------------------------------
+    // WELCOME LANDING PAGE BUTTONS
+    // --------------------------------------------
+    if (interaction.customId === 'welcome_rules') {
+      const rulesList = serverRules.rules.map((r, i) => `${i + 1}. ${r}`).join('\n');
+      const embed = new EmbedBuilder()
+        .setColor(0x57F287)
+        .setTitle(serverRules.title)
+        .setDescription(serverRules.description)
+        .addFields({ name: '📜 Rules', value: rulesList });
+
+      return interaction.reply({ embeds: [embed], ephemeral: true });
+    }
+
+    if (interaction.customId === 'welcome_channels') {
+      const mediaChannel = config.mediaChannelId ? `<#${config.mediaChannelId}>` : 'N/A';
+      const filesChannel = config.filesChannelId ? `<#${config.filesChannelId}>` : 'N/A';
+      const embed = new EmbedBuilder()
+        .setColor(0x5865F2)
+        .setTitle('📁 Channel Guide')
+        .setDescription('Here are the main channels and what they are for:')
+        .addFields(
+          { name: '🖼️ Media', value: `Post images/videos in ${mediaChannel}`, inline: true },
+          { name: '📄 Files', value: `Post documents in ${filesChannel}`, inline: true }
+        );
+
+      return interaction.reply({ embeds: [embed], ephemeral: true });
+    }
+
+    if (interaction.customId === 'welcome_help') {
+      const embed = new EmbedBuilder()
+        .setColor(0xFEE75C)
+        .setTitle('🆘 Need Help?')
+        .setDescription(
+          'If you need assistance, you can:\n\n' +
+          '• Ask in the general chat\n' +
+          '• Ping a moderator or admin\n' +
+          '• Check the rules for guidelines'
+        );
+
+      return interaction.reply({ embeds: [embed], ephemeral: true });
     }
 
     const [action, ...rest] = interaction.customId.split('_');
