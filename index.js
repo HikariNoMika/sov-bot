@@ -73,6 +73,45 @@ function canReview(member) {
 }
 
 // ----------------------------------------------------
+// BUILD WELCOME LANDING PAGE
+// ----------------------------------------------------
+function buildWelcomeLanding(member) {
+  const embed = new EmbedBuilder()
+    .setColor(0x57F287)
+    .setTitle(`🎉 Welcome to ${member.guild.name}!`)
+    .setDescription(
+      `Hello ${member}, welcome!\n\n` +
+      `We're glad to have you here. Use the buttons below to get started.`
+    )
+    .addFields({
+      name: '📌 Quick Tips',
+      value:
+        '• Click **📜 Rules** to see the server rules\n' +
+        '• Click **📁 Channels** to see channel guides\n' +
+        '• Click **🆘 Help** if you need assistance'
+    })
+    .setThumbnail(member.user.displayAvatarURL())
+    .setTimestamp();
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('welcome_rules')
+      .setLabel('📜 Rules')
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId('welcome_channels')
+      .setLabel('📁 Channels')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('welcome_help')
+      .setLabel('🆘 Help')
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  return { embeds: [embed], components: [row] };
+}
+
+// ----------------------------------------------------
 // WELCOME LANDING PAGE
 // ----------------------------------------------------
 client.on('guildMemberAdd', async (member) => {
@@ -83,44 +122,9 @@ client.on('guildMemberAdd', async (member) => {
       return;
     }
 
-    const embed = new EmbedBuilder()
-      .setColor(0x57F287)
-      .setTitle(`🎉 Welcome to ${member.guild.name}!`)
-      .setDescription(
-        `Hello ${member}, welcome!\n\n` +
-        `We're glad to have you here. Use the buttons below to get started.`
-      )
-      .addFields(
-        {
-          name: '📌 Quick Tips',
-          value:
-            '• Click **📜 Rules** to see the server rules\n' +
-            '• Click **📁 Channels** to see channel guides\n' +
-            '• Click **🆘 Help** if you need assistance'
-        }
-      )
-      .setThumbnail(member.user.displayAvatarURL())
-      .setTimestamp();
-
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId('welcome_rules')
-        .setLabel('📜 Rules')
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId('welcome_channels')
-        .setLabel('📁 Channels')
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId('welcome_help')
-        .setLabel('🆘 Help')
-        .setStyle(ButtonStyle.Secondary)
-    );
-
     await channel.send({
       content: `${member}`,
-      embeds: [embed],
-      components: [row]
+      ...buildWelcomeLanding(member)
     });
   } catch (err) {
     console.error('Welcome error:', err);
@@ -136,6 +140,19 @@ client.on('messageCreate', async (message) => {
     if (!message.guild) return;
 
     const content = message.content.toLowerCase();
+
+    // --------------------------------------------
+    // 0) !WELCOME COMMAND (preview for moderators)
+    // --------------------------------------------
+    if (content === '!welcome') {
+      if (!canReview(message.member)) return;
+
+      await message.channel.send({
+        content: `👋 Welcome preview for ${message.author}`,
+        ...buildWelcomeLanding(message.member)
+      });
+      return;
+    }
 
     // --------------------------------------------
     // 1) BAD WORD REVIEW (OPTION A: SAME CHANNEL)
