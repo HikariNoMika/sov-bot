@@ -166,6 +166,22 @@ client.on('messageCreate', async (message) => {
       return;
     }
 
+    if (content === '!mods' || content === '!moderators') {
+      const userIds = config.moderatorUserIds.map(id => `<@${id}>`).join('\n') || 'None';
+      const roleIds = config.moderatorRoleIds.map(id => `<@&${id}>`).join('\n') || 'None';
+
+      const embed = new EmbedBuilder()
+        .setColor(0x5865F2)
+        .setTitle('🛡️ Moderators')
+        .addFields(
+          { name: 'Users', value: userIds, inline: true },
+          { name: 'Roles', value: roleIds, inline: true }
+        );
+
+      await message.channel.send({ embeds: [embed] });
+      return;
+    }
+
     // --------------------------------------------
     // 1) BAD WORD REVIEW (OPTION A: SAME CHANNEL)
     // --------------------------------------------
