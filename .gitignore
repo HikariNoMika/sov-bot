@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+
+# Configuration (may contain secrets)
+config.json
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS files
+Thumbs.db
+.DS_Store
+Desktop.ini
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build output
+dist/
+build/
