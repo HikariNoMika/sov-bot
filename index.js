@@ -285,9 +285,10 @@ client.on('messageCreate', async (message) => {
     // COC WAR COMMANDS
     // --------------------------------------------
     if (content.startsWith('!coc ')) {
-      if (!canReview(message.member)) return;
-
       const args = content.slice(5).trim().split(/\s+/);
+
+      // Only status is public; everything else requires moderator
+      if (args[0] !== 'status' && !canReview(message.member)) return;
 
       if (args[0] === 'start' && args[1] === 'war') {
         if (cocWar.phase && cocWar.phase !== 'ended') {
