@@ -185,8 +185,8 @@ function cocFormatTime(ms) {
   let str = '';
   if (days > 0) str += `${days}d `;
   if (hours > 0) str += `${hours}h `;
-  str += `${minutes}m`;
-  return str;
+  if (minutes > 0) str += `${minutes}m`;
+  return str.trim();
 }
 
 client.once('ready', () => {
