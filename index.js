@@ -299,13 +299,19 @@ client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
     if (!message.guild) return;
 
+    // Ensure member and roles are cached
+    if (!message.member) message.member = await message.guild.members.fetch(message.author.id);
+
     const content = message.content.toLowerCase();
 
     // --------------------------------------------
     // 0) COMMANDS
     // --------------------------------------------
     if (content === '!welcome') {
-      if (!canReview(message.member)) return;
+      if (!canReview(message.member)) {
+        await message.channel.send('❌ You need the **Sov** role or Admin permissions to use this command.');
+        return;
+      }
 
       await message.channel.send({
         content: `👋 Welcome preview for ${message.author}`,
@@ -604,7 +610,10 @@ client.on('messageCreate', async (message) => {
       const args = content.slice(5).trim().split(/\s+/);
 
       // Only status/help/commands is public; everything else requires moderator
-      if (!['status', 'help', 'commands'].includes(args[0]) && !canReview(message.member)) return;
+      if (!['status', 'help', 'commands'].includes(args[0]) && !canReview(message.member)) {
+        await message.channel.send('❌ You need the **Sov** role or Admin permissions to use this command.');
+        return;
+      }
 
       if (args[0] === 'start' && args[1] === 'war') {
         if (cocWar.phase && cocWar.phase !== 'ended') {
