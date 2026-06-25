@@ -442,27 +442,32 @@ client.on('messageCreate', async (message) => {
     if (content === '!commands') {
       const embed = new EmbedBuilder()
         .setColor(0x5865F2)
-        .setTitle('📋 Bot Commands')
-        .setDescription('Here are all available commands:')
+        .setAuthor({ name: client.user.username, iconURL: client.user.displayAvatarURL() })
+        .setTitle('📋 Command Center')
+        .setDescription('```\n<> required  ·  [] optional  ·  (mods) = mod only\n```')
         .addFields(
-          { name: '👋 Welcome', value:
-            '`!welcome` - Preview landing page (mods)\n' +
-            '`!rules` - Show server rules\n' +
-            '`!mods` - Show moderators' },
-          { name: '🚫 Moderation', value:
-            '`!ban @user [reason]` - Ban user (mods)\n' +
-            '`!mute @user <time> [reason]` - Mute user (mods)\n' +
-            '`!unmute @user` - Unmute user (mods)\n' +
-            '`!badwords list` - Show bad words\n' +
-            '`!badwords add <word>` - Add bad word (mods)\n' +
-            '`!badwords remove <word>` - Remove bad word (mods)' },
-          { name: '🏰 CoC War', value:
-            '`!coc status` - War status\n' +
-            '`!coc start war [time]` - Start war (mods)\n' +
-            '`!coc start cwl` - Start CWL (mods)\n' +
-            '`!coc cancel` - Cancel war (mods)\n' +
-            '`!coc commands` - CoC help' }
-        );
+          { name: '👋 **Welcome**', value:
+            '`!welcome` — Preview landing page (mods)\n' +
+            '`!rules` — Display server rules\n' +
+            '`!mods` — List moderators',
+            inline: false },
+          { name: '🚫 **Moderation**', value:
+            '`!ban @user [reason]` — Ban member (mods)\n' +
+            '`!mute @user <time> [reason]` — Timeout member (mods)\n' +
+            '`!unmute @user` — Remove timeout (mods)\n' +
+            '`!badwords list` — View filtered words\n' +
+            '`!badwords add <word>` — Add filter (mods)\n' +
+            '`!badwords remove <word>` — Remove filter (mods)',
+            inline: false },
+          { name: '🏰 **CoC War**', value:
+            '`!coc status` — Current war timer\n' +
+            '`!coc start war [time]` — Start normal war (mods)\n' +
+            '`!coc start cwl` — Start CWL season (mods)\n' +
+            '`!coc cancel` — Stop war timer (mods)\n' +
+            '`!coc commands` — CoC help',
+            inline: false }
+        )
+        .setFooter({ text: 'Tip: use !coc commands for detailed CoC help' });
 
       await message.channel.send({ embeds: [embed] });
       return;
