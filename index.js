@@ -324,16 +324,23 @@ client.on('messageCreate', async (message) => {
     }
 
     if (content === '!mods' || content === '!moderators') {
-      const userList = config.moderatorUserIds.map(id => `<@${id}>`) || [];
+      const userList = config.moderatorUserIds.map(id => `<@${id}>`);
 
-      await message.guild.members.fetch();
-      const roleMembers = config.moderatorRoleIds.flatMap(roleId => {
-        const role = message.guild.roles.cache.get(roleId);
-        if (!role) return [];
-        return role.members.map(m => `${m.user.tag}`);
-      });
+      const roleMods = [];
+      if (config.moderatorRoleIds.length > 0) {
+        const members = await message.guild.members.fetch();
+        for (const roleId of config.moderatorRoleIds) {
+          const role = message.guild.roles.cache.get(roleId);
+          if (!role) continue;
+          members.forEach(m => {
+            if (m.roles.cache.has(roleId)) {
+              roleMods.push(`${m.user.tag}`);
+            }
+          });
+        }
+      }
 
-      const allMods = [...new Set([...userList, ...roleMembers])];
+      const allMods = [...new Set([...userList, ...roleMods])];
 
       const embed = new EmbedBuilder()
         .setColor(0x5865F2)
