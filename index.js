@@ -324,16 +324,22 @@ client.on('messageCreate', async (message) => {
     }
 
     if (content === '!mods' || content === '!moderators') {
-      const userIds = config.moderatorUserIds.map(id => `<@${id}>`).join('\n') || 'None';
-      const roleIds = config.moderatorRoleIds.map(id => `<@&${id}>`).join('\n') || 'None';
+      const userList = config.moderatorUserIds.map(id => `<@${id}>`) || [];
+
+      const roleMembers = config.moderatorRoleIds.flatMap(roleId => {
+        const role = message.guild.roles.cache.get(roleId);
+        if (!role) return [`<@&${roleId}> (role not found)`];
+        const members = role.members.map(m => `${m.user.tag}`);
+        if (members.length === 0) return [`${role.name} (no members)`];
+        return members;
+      });
+
+      const allMods = [...userList, ...roleMembers];
 
       const embed = new EmbedBuilder()
         .setColor(0x5865F2)
         .setTitle('🛡️ Moderators')
-        .addFields(
-          { name: 'Users', value: userIds, inline: true },
-          { name: 'Roles', value: roleIds, inline: true }
-        );
+        .setDescription(allMods.length > 0 ? allMods.join('\n') : 'None configured');
 
       await message.channel.send({ embeds: [embed] });
       return;
