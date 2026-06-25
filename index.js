@@ -38,6 +38,100 @@ const serverRules = config.serverRules || {
   ]
 };
 
+// ----------------------------------------------------
+// CoC WAR TIMER SYSTEM
+// ----------------------------------------------------
+const HOUR = 60 * 60 * 1000;
+const DAY = 24 * HOUR;
+
+const cocWar = {
+  type: null,
+  phase: null,
+  prepEndsAt: null,
+  battleEndsAt: null,
+  timers: []
+};
+
+function cocSend(guild, content) {
+  const channel = guild.channels.cache.get(config.cocChannelId);
+  if (channel) channel.send(content);
+}
+
+function cocScheduleNotifications(guild) {
+  cocWar.timers.forEach(clearTimeout);
+  cocWar.timers = [];
+
+  if (cocWar.type === 'normal') {
+    // Battle starts (after 24h prep)
+    cocWar.timers.push(setTimeout(() => {
+      cocWar.phase = 'battle';
+      cocSend(guild, `⚔️ **Battle Day has started!** Attack now to secure victory for the clan!`);
+    }, cocWar.prepEndsAt - Date.now()));
+
+    // 12h remaining in battle
+    cocWar.timers.push(setTimeout(() => {
+      cocSend(guild, `⏰ **12 hours remaining** in battle! Make sure you've used both attacks!`);
+    }, cocWar.battleEndsAt - Date.now() - 12 * HOUR));
+
+    // 6h remaining
+    cocWar.timers.push(setTimeout(() => {
+      cocSend(guild, `⏰ **6 hours remaining!** Get your attacks in before time runs out!`);
+    }, cocWar.battleEndsAt - Date.now() - 6 * HOUR));
+
+    // 1h remaining
+    cocWar.timers.push(setTimeout(() => {
+      cocSend(guild, `🔥 **1 hour left!** Final chance to use your attacks!`);
+    }, cocWar.battleEndsAt - Date.now() - HOUR));
+
+    // War over
+    cocWar.timers.push(setTimeout(() => {
+      cocWar.phase = 'ended';
+      cocSend(guild, `🏁 **The war has ended!** Great effort, clan!`);
+    }, cocWar.battleEndsAt - Date.now()));
+
+  } else if (cocWar.type === 'cwl') {
+    // CWL has 1 prep day + 7 battle rounds
+    const roundDuration = 24 * HOUR; // each round is 24h
+
+    // Phase switch: prep -> battle (start of round 1)
+    cocWar.timers.push(setTimeout(() => {
+      cocWar.phase = 'battle';
+      cocSend(guild, `⚔️ **CWL Round 1 has started!** Attack and earn stars for the clan!`);
+    }, cocWar.prepEndsAt - Date.now()));
+
+    // Schedule each round notification
+    for (let round = 2; round <= 7; round++) {
+      const roundStart = cocWar.prepEndsAt + (round - 1) * roundDuration;
+      cocWar.timers.push(setTimeout(() => {
+        cocSend(guild, `⚔️ **CWL Round ${round} has started!** Get your attacks in!`);
+      }, roundStart - Date.now()));
+
+      // 6h reminder for each round
+      cocWar.timers.push(setTimeout(() => {
+        cocSend(guild, `⏰ **CWL Round ${round} - 6 hours left!** Don't forget to attack!`);
+      }, roundStart + 18 * HOUR - Date.now()));
+    }
+
+    // CWL over
+    cocWar.timers.push(setTimeout(() => {
+      cocWar.phase = 'ended';
+      cocSend(guild, `🏁 **CWL has ended!** Well fought, clan! 🎉`);
+    }, cocWar.battleEndsAt - Date.now()));
+  }
+}
+
+function cocFormatTime(ms) {
+  if (ms <= 0) return 'Ended';
+  const days = Math.floor(ms / DAY);
+  const hours = Math.floor((ms % DAY) / HOUR);
+  const minutes = Math.floor((ms % HOUR) / 60000);
+  let str = '';
+  if (days > 0) str += `${days}d `;
+  if (hours > 0) str += `${hours}h `;
+  str += `${minutes}m`;
+  return str;
+}
+
 client.once('ready', () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 });
@@ -179,6 +273,101 @@ client.on('messageCreate', async (message) => {
         );
 
       await message.channel.send({ embeds: [embed] });
+      return;
+    }
+
+    // --------------------------------------------
+    // COC WAR COMMANDS
+    // --------------------------------------------
+    if (content.startsWith('!coc ')) {
+      if (!canReview(message.member)) return;
+
+      const args = content.slice(5).trim().split(/\s+/);
+
+      if (args[0] === 'war' && args[1] === 'normal') {
+        if (cocWar.phase && cocWar.phase !== 'ended') {
+          await message.channel.send('⚠️ A war is already ongoing! Use `!coc cancel` first.');
+          return;
+        }
+
+        const now = Date.now();
+        cocWar.type = 'normal';
+        cocWar.phase = 'preparation';
+        cocWar.prepEndsAt = now + DAY;
+        cocWar.battleEndsAt = now + 2 * DAY;
+
+        cocScheduleNotifications(message.guild);
+
+        await message.channel.send(`⚔️ **Normal War started!**\n📅 Preparation: 24h\n⚔️ Battle: 24h\nTotal: 2 days`);
+        cocSend(message.guild, `🏰 **A Clan War has started!** Preparation phase is active. Get your bases ready!`);
+
+      } else if (args[0] === 'war' && args[1] === 'cwl') {
+        if (cocWar.phase && cocWar.phase !== 'ended') {
+          await message.channel.send('⚠️ A war is already ongoing! Use `!coc cancel` first.');
+          return;
+        }
+
+        const now = Date.now();
+        cocWar.type = 'cwl';
+        cocWar.phase = 'preparation';
+        cocWar.prepEndsAt = now + DAY;
+        cocWar.battleEndsAt = now + DAY + 7 * DAY;
+
+        cocScheduleNotifications(message.guild);
+
+        await message.channel.send(`⚔️ **CWL started!**\n📅 Preparation: 24h\n⚔️ 7 Battle Rounds\nTotal: 8 days`);
+        cocSend(message.guild, `🏆 **Clan War League has started!** Prepare for 7 rounds of battles!`);
+
+      } else if (args[0] === 'status') {
+        if (!cocWar.phase || cocWar.phase === 'ended') {
+          await message.channel.send('📭 No ongoing war.');
+          return;
+        }
+
+        const now = Date.now();
+        let desc;
+
+        if (cocWar.phase === 'preparation') {
+          desc = `📅 **Preparation Phase**\nTime left: ${cocFormatTime(cocWar.prepEndsAt - now)}`;
+        } else if (cocWar.phase === 'battle') {
+          desc = `⚔️ **Battle Phase**\nTime left: ${cocFormatTime(cocWar.battleEndsAt - now)}`;
+        } else {
+          desc = '🏁 War has ended.';
+        }
+
+        const embed = new EmbedBuilder()
+          .setColor(cocWar.type === 'cwl' ? 0xFFD700 : 0x57F287)
+          .setTitle(`🏰 ${cocWar.type.toUpperCase()} War Status`)
+          .setDescription(desc)
+          .addFields(
+            { name: '📅 Prep ends', value: `<t:${Math.floor(cocWar.prepEndsAt / 1000)}:R>`, inline: true },
+            { name: '⚔️ Battle ends', value: `<t:${Math.floor(cocWar.battleEndsAt / 1000)}:R>`, inline: true }
+          );
+
+        await message.channel.send({ embeds: [embed] });
+
+      } else if (args[0] === 'cancel') {
+        if (!cocWar.phase || cocWar.phase === 'ended') {
+          await message.channel.send('📭 No ongoing war to cancel.');
+          return;
+        }
+
+        cocWar.timers.forEach(clearTimeout);
+        cocWar.timers = [];
+        cocWar.phase = 'ended';
+
+        await message.channel.send('❌ War cancelled.');
+        cocSend(message.guild, `❌ **The war has been cancelled.**`);
+
+      } else {
+        await message.channel.send(
+          '**CoC Commands:**\n' +
+          '`!coc war normal` - Start normal war (2 days)\n' +
+          '`!coc war cwl` - Start CWL (8 days)\n' +
+          '`!coc status` - Check war status\n' +
+          '`!coc cancel` - Cancel current war'
+        );
+      }
       return;
     }
 
