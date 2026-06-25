@@ -100,11 +100,12 @@ function cocClearState() {
 cocLoadState();
 
 function cocSend(guild, content) {
-  const channel = guild.channels.cache.get(config.cocChannelId);
-  if (channel) {
-    channel.send(content).catch(e => console.log('cocSend error:', e.message));
-  } else {
-    console.log('cocSend: channel not found -', config.cocChannelId);
+  const channels = [config.cocChannelId, config.generalChannelId].filter(Boolean);
+  for (const id of [...new Set(channels)]) {
+    const ch = guild.channels.cache.get(id);
+    if (ch) {
+      ch.send(content).catch(e => console.log('cocSend error:', e.message));
+    }
   }
 }
 
@@ -622,7 +623,7 @@ client.on('messageCreate', async (message) => {
           return;
         }
 
-        let prepHours = 24;
+        let prepHours = 23;
         if (args[2]) {
           const match = args[2].match(/^(\d+)(h|m|d)$/);
           if (match) {
