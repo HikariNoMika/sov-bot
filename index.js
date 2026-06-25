@@ -121,11 +121,6 @@ function cocScheduleNotifications(guild) {
       cocSend(guild, `⚔️ **Battle Day has started!** Attack now to secure victory for the clan!`);
     }, t(prepDelay)));
 
-    // 12h remaining in battle
-    cocWar.timers.push(setTimeout(() => {
-      cocSend(guild, `⏰ **12 hours remaining** in battle! Make sure you've used both attacks!`);
-    }, t(cocWar.battleEndsAt - Date.now() - 12 * HOUR)));
-
     // 6h remaining
     cocWar.timers.push(setTimeout(() => {
       cocSend(guild, `⏰ **6 hours remaining!** Get your attacks in before time runs out!`);
