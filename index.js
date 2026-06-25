@@ -1,4 +1,6 @@
 require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
 
 const {
   Client,
@@ -278,6 +280,54 @@ client.on('messageCreate', async (message) => {
         );
 
       await message.channel.send({ embeds: [embed] });
+      return;
+    }
+
+    // --------------------------------------------
+    // BADWORDS MANAGEMENT
+    // --------------------------------------------
+    if (content.startsWith('!badwords ')) {
+      if (!canReview(message.member)) return;
+
+      const parts = content.slice(10).trim().split(/\s+/);
+      const action = parts[0];
+      const word = parts.slice(1).join(' ').toLowerCase();
+
+      if (action === 'list') {
+        const words = config.badWords.map((w, i) => `${i + 1}. ${w}`).join('\n') || 'None';
+        const embed = new EmbedBuilder()
+          .setColor(0xED4245)
+          .setTitle('🚫 Bad Words List')
+          .setDescription(words);
+        await message.channel.send({ embeds: [embed] });
+
+      } else if (action === 'add' && word) {
+        if (config.badWords.includes(word)) {
+          await message.channel.send(`⚠️ \`${word}\` is already in the list.`);
+          return;
+        }
+        config.badWords.push(word);
+        fs.writeFileSync(path.join(__dirname, 'config.json'), JSON.stringify(config, null, 2));
+        await message.channel.send(`✅ Added \`${word}\` to bad words list.`);
+
+      } else if (action === 'remove' && word) {
+        const index = config.badWords.indexOf(word);
+        if (index === -1) {
+          await message.channel.send(`⚠️ \`${word}\` not found in the list.`);
+          return;
+        }
+        config.badWords.splice(index, 1);
+        fs.writeFileSync(path.join(__dirname, 'config.json'), JSON.stringify(config, null, 2));
+        await message.channel.send(`✅ Removed \`${word}\` from bad words list.`);
+
+      } else {
+        await message.channel.send(
+          '**Badwords Commands:**\n' +
+          '`!badwords list` - Show all bad words\n' +
+          '`!badwords add <word>` - Add a bad word\n' +
+          '`!badwords remove <word>` - Remove a bad word'
+        );
+      }
       return;
     }
 
