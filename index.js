@@ -295,15 +295,29 @@ client.on('messageCreate', async (message) => {
           return;
         }
 
+        let prepHours = 24;
+        if (args[2]) {
+          const match = args[2].match(/^(\d+)(h|m|d)$/);
+          if (match) {
+            if (match[2] === 'h') prepHours = parseInt(match[1]);
+            else if (match[2] === 'm') prepHours = parseInt(match[1]) / 60;
+            else if (match[2] === 'd') prepHours = parseInt(match[1]) * 24;
+          } else {
+            await message.channel.send('⚠️ Invalid format. Use e.g. `!coc start war 23h`, `!coc start war 90m`');
+            return;
+          }
+        }
+
+        const prepMs = prepHours * HOUR;
         const now = Date.now();
         cocWar.type = 'normal';
         cocWar.phase = 'preparation';
-        cocWar.prepEndsAt = now + DAY;
-        cocWar.battleEndsAt = now + 2 * DAY;
+        cocWar.prepEndsAt = now + prepMs;
+        cocWar.battleEndsAt = now + prepMs + DAY;
 
         cocScheduleNotifications(message.guild);
 
-        await message.channel.send(`⚔️ **Normal War started!**\n📅 Preparation: 24h\n⚔️ Battle: 24h\nTotal: 2 days`);
+        await message.channel.send(`⚔️ **Normal War started!**\n📅 Preparation: ${cocFormatTime(prepMs)}\n⚔️ Battle: 24h\nTotal: ${cocFormatTime(prepMs + DAY)}`);
         cocSend(message.guild, `🏰 **A Clan War has started!** Preparation phase is active. Get your bases ready!`);
 
       } else if (args[0] === 'start' && args[1] === 'cwl') {
@@ -367,7 +381,8 @@ client.on('messageCreate', async (message) => {
       } else {
         await message.channel.send(
           '**CoC Commands:**\n' +
-          '`!coc start war` - Start normal war (2 days)\n' +
+          '`!coc start war [time]` - Start normal war (24h prep, 24h battle)\n' +
+          '`!coc start war 23h` - With custom prep time\n' +
           '`!coc start cwl` - Start CWL (8 days)\n' +
           '`!coc status` - Check war status\n' +
           '`!coc cancel` - Cancel current war'
