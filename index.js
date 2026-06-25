@@ -809,8 +809,27 @@ client.on('messageCreate', async (message) => {
       `Please post media in ${mediaChannel} and documents/files in ${filesChannel}.`
     );
 
+    return;
   } catch (err) {
     console.error('Message moderation error:', err);
+  }
+
+  // Catch-all: unknown !command
+  if (content.startsWith('!')) {
+    const embed = new EmbedBuilder()
+      .setColor(0x5865F2)
+      .setAuthor({ name: client.user.username, iconURL: client.user.displayAvatarURL() })
+      .setTitle('❓ Unknown Command')
+      .setDescription(`\`${message.content.split(' ')[0]}\` is not a recognized command.`)
+      .addFields(
+        { name: '👋 **Welcome**', value: '`!welcome` (mods) · `!rules` · `!mods`' },
+        { name: '🚫 **Moderation**', value: '`!ban` (mods) · `!mute` (mods) · `!unmute` (mods) · `!badwords`' },
+        { name: '📊 **Community**', value: '`!poll` · `!suggest`' },
+        { name: '🏰 **CoC War**', value: '`!coc status` · `!coc start war` (mods) · `!coc start cwl` (mods) · `!coc cancel` (mods)' }
+      )
+      .setFooter({ text: 'Use !commands for full details' });
+
+    await message.channel.send({ embeds: [embed] });
   }
 });
 
