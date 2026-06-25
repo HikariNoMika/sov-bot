@@ -287,8 +287,8 @@ client.on('messageCreate', async (message) => {
     if (content.startsWith('!coc ')) {
       const args = content.slice(5).trim().split(/\s+/);
 
-      // Only status is public; everything else requires moderator
-      if (args[0] !== 'status' && !canReview(message.member)) return;
+      // Only status/help/commands is public; everything else requires moderator
+      if (!['status', 'help', 'commands'].includes(args[0]) && !canReview(message.member)) return;
 
       if (args[0] === 'start' && args[1] === 'war') {
         if (cocWar.phase && cocWar.phase !== 'ended') {
@@ -382,11 +382,12 @@ client.on('messageCreate', async (message) => {
       } else {
         await message.channel.send(
           '**CoC Commands:**\n' +
-          '`!coc start war [time]` - Start normal war (24h prep, 24h battle)\n' +
+          '`!coc status` - Check war status (everyone)\n' +
+          '`!coc commands` - Show this list (everyone)\n' +
+          '`!coc start war [time]` - Start normal war (mods only)\n' +
           '`!coc start war 23h` - With custom prep time\n' +
-          '`!coc start cwl` - Start CWL (8 days)\n' +
-          '`!coc status` - Check war status\n' +
-          '`!coc cancel` - Cancel current war'
+          '`!coc start cwl` - Start CWL (mods only)\n' +
+          '`!coc cancel` - Cancel current war (mods only)'
         );
       }
       return;
