@@ -339,6 +339,91 @@ client.on('messageCreate', async (message) => {
       return;
     }
 
+    // --------------------------------------------
+    // MODERATION: BAN
+    // --------------------------------------------
+    if (content.startsWith('!ban ')) {
+      if (!canReview(message.member)) return;
+
+      const member = message.mentions.members.first();
+      if (!member) {
+        await message.channel.send('⚠️ Mention a user to ban. Usage: `!ban @user [reason]`');
+        return;
+      }
+
+      if (!member.bannable) {
+        await message.channel.send('⚠️ I cannot ban that user. Check my role position.');
+        return;
+      }
+
+      const reason = content.split(' ').slice(2).join(' ') || 'No reason provided';
+      await member.ban({ reason });
+      await message.channel.send(`✅ Banned ${member.user.tag}. Reason: ${reason}`);
+      return;
+    }
+
+    // --------------------------------------------
+    // MODERATION: MUTE / TIMEOUT
+    // --------------------------------------------
+    if (content.startsWith('!mute ') || content.startsWith('!timeout ')) {
+      if (!canReview(message.member)) return;
+
+      const member = message.mentions.members.first();
+      if (!member) {
+        await message.channel.send('⚠️ Mention a user. Usage: `!mute @user <duration> [reason]`\nDurations: 60s, 5m, 1h, 7d (max 28d)');
+        return;
+      }
+
+      if (!member.moderatable) {
+        await message.channel.send('⚠️ I cannot mute that user.');
+        return;
+      }
+
+      const parts = content.split(/\s+/);
+      const durationStr = parts[2];
+      if (!durationStr) {
+        await message.channel.send('⚠️ Specify duration. e.g. `!mute @user 1h spamming`');
+        return;
+      }
+
+      const match = durationStr.match(/^(\d+)(s|m|h|d)$/);
+      if (!match) {
+        await message.channel.send('⚠️ Invalid duration. Use e.g. 60s, 5m, 1h, 7d');
+        return;
+      }
+
+      const multipliers = { s: 1000, m: 60000, h: 3600000, d: 86400000 };
+      const ms = parseInt(match[1]) * multipliers[match[2]];
+      if (ms > 28 * 86400000) {
+        await message.channel.send('⚠️ Max timeout is 28 days.');
+        return;
+      }
+
+      const reason = parts.slice(3).join(' ') || 'No reason provided';
+      await member.timeout(ms, reason);
+      await message.channel.send(`✅ Muted ${member.user.tag} for ${durationStr}. Reason: ${reason}`);
+      return;
+    }
+
+    // --------------------------------------------
+    // UNMUTE
+    // --------------------------------------------
+    if (content === '!unmute' || content.startsWith('!unmute ')) {
+      if (!canReview(message.member)) return;
+
+      const member = message.mentions.members.first();
+      if (!member) {
+        await message.channel.send('⚠️ Mention a user. Usage: `!unmute @user`');
+        return;
+      }
+
+      if (!member.moderatable) return;
+
+      await member.timeout(null);
+      await message.channel.send(`✅ Unmuted ${member.user.tag}.`);
+      return;
+    }
+
     if (content === '!commands') {
       const embed = new EmbedBuilder()
         .setColor(0x5865F2)
@@ -350,6 +435,9 @@ client.on('messageCreate', async (message) => {
             '`!rules` - Show server rules\n' +
             '`!mods` - Show moderators' },
           { name: '🚫 Moderation', value:
+            '`!ban @user [reason]` - Ban user (mods)\n' +
+            '`!mute @user <time> [reason]` - Mute user (mods)\n' +
+            '`!unmute @user` - Unmute user (mods)\n' +
             '`!badwords list` - Show bad words\n' +
             '`!badwords add <word>` - Add bad word (mods)\n' +
             '`!badwords remove <word>` - Remove bad word (mods)' },
