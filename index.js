@@ -45,14 +45,52 @@ const serverRules = config.serverRules || {
 // ----------------------------------------------------
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
+const COC_STATE_PATH = path.join(__dirname, 'coc-war-state.json');
 
 const cocWar = {
   type: null,
   phase: null,
   prepEndsAt: null,
   battleEndsAt: null,
+  guildId: null,
   timers: []
 };
+
+function cocSaveState() {
+  const data = {
+    type: cocWar.type,
+    phase: cocWar.phase,
+    prepEndsAt: cocWar.prepEndsAt,
+    battleEndsAt: cocWar.battleEndsAt,
+    guildId: cocWar.guildId
+  };
+  fs.writeFileSync(COC_STATE_PATH, JSON.stringify(data));
+}
+
+function cocLoadState() {
+  try {
+    if (fs.existsSync(COC_STATE_PATH)) {
+      const data = JSON.parse(fs.readFileSync(COC_STATE_PATH, 'utf8'));
+      if (data.phase === 'ended' || data.phase === null) return;
+      Object.assign(cocWar, data);
+      console.log(`🔄 Resumed ${cocWar.type} war (${cocWar.phase} phase)`);
+    }
+  } catch (e) {
+    console.log('No saved war state to resume.');
+  }
+}
+
+function cocClearState() {
+  cocWar.type = null;
+  cocWar.phase = null;
+  cocWar.prepEndsAt = null;
+  cocWar.battleEndsAt = null;
+  cocWar.guildId = null;
+  try { fs.unlinkSync(COC_STATE_PATH); } catch {}
+}
+
+// Load state on startup
+cocLoadState();
 
 function cocSend(guild, content) {
   const channel = guild.channels.cache.get(config.cocChannelId);
@@ -92,7 +130,7 @@ function cocScheduleNotifications(guild) {
 
     // War over
     cocWar.timers.push(setTimeout(() => {
-      cocWar.phase = 'ended';
+      cocClearState();
       cocSend(guild, `🏁 **The war has ended!** Great effort, clan!`);
     }, cocWar.battleEndsAt - Date.now()));
 
@@ -121,7 +159,7 @@ function cocScheduleNotifications(guild) {
 
     // CWL over
     cocWar.timers.push(setTimeout(() => {
-      cocWar.phase = 'ended';
+      cocClearState();
       cocSend(guild, `🏁 **CWL has ended!** Well fought, clan! 🎉`);
     }, cocWar.battleEndsAt - Date.now()));
   }
@@ -141,6 +179,15 @@ function cocFormatTime(ms) {
 
 client.once('ready', () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
+
+  // Resume CoC war if saved state exists
+  if (cocWar.phase && cocWar.phase !== 'ended' && cocWar.guildId) {
+    const guild = client.guilds.cache.get(cocWar.guildId);
+    if (guild) {
+      console.log(`🔄 Resuming ${cocWar.type} war notifications...`);
+      cocScheduleNotifications(guild);
+    }
+  }
 });
 
 // ----------------------------------------------------
@@ -365,6 +412,8 @@ client.on('messageCreate', async (message) => {
         cocWar.phase = 'preparation';
         cocWar.prepEndsAt = now + prepMs;
         cocWar.battleEndsAt = now + prepMs + DAY;
+        cocWar.guildId = message.guild.id;
+        cocSaveState();
 
         cocScheduleNotifications(message.guild);
 
@@ -382,6 +431,8 @@ client.on('messageCreate', async (message) => {
         cocWar.phase = 'preparation';
         cocWar.prepEndsAt = now + DAY;
         cocWar.battleEndsAt = now + DAY + 7 * DAY;
+        cocWar.guildId = message.guild.id;
+        cocSaveState();
 
         cocScheduleNotifications(message.guild);
 
@@ -424,7 +475,7 @@ client.on('messageCreate', async (message) => {
 
         cocWar.timers.forEach(clearTimeout);
         cocWar.timers = [];
-        cocWar.phase = 'ended';
+        cocClearState();
 
         await message.channel.send('❌ War cancelled.');
         cocSend(message.guild, `❌ **The war has been cancelled.**`);
