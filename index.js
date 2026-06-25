@@ -101,7 +101,11 @@ cocLoadState();
 
 function cocSend(guild, content) {
   const channel = guild.channels.cache.get(config.cocChannelId);
-  if (channel) channel.send(content);
+  if (channel) {
+    channel.send(content).catch(e => console.log('cocSend error:', e.message));
+  } else {
+    console.log('cocSend: channel not found -', config.cocChannelId);
+  }
 }
 
 function cocScheduleNotifications(guild) {
