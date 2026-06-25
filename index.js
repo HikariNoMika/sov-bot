@@ -302,15 +302,17 @@ client.on('messageCreate', async (message) => {
     // --------------------------------------------
     // 0) COMMANDS
     // --------------------------------------------
-    if (content === '!welcome') {
+    if (content === '!welcome' || content.startsWith('!welcome ')) {
       if (!canReview(message.member)) {
         await message.channel.send('❌ You need the **Sov** role or Admin permissions to use this command.');
         return;
       }
 
+      const target = message.mentions.members.first() || message.member;
+
       await message.channel.send({
-        content: `👋 Welcome preview for ${message.author}`,
-        ...buildWelcomeLanding(message.member)
+        content: `👋 Welcome preview for ${target.user}`,
+        ...buildWelcomeLanding(target)
       });
       return;
     }
