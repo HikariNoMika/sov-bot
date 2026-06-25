@@ -326,15 +326,14 @@ client.on('messageCreate', async (message) => {
     if (content === '!mods' || content === '!moderators') {
       const userList = config.moderatorUserIds.map(id => `<@${id}>`) || [];
 
+      await message.guild.members.fetch();
       const roleMembers = config.moderatorRoleIds.flatMap(roleId => {
         const role = message.guild.roles.cache.get(roleId);
-        if (!role) return [`<@&${roleId}> (role not found)`];
-        const members = role.members.map(m => `${m.user.tag}`);
-        if (members.length === 0) return [`${role.name} (no members)`];
-        return members;
+        if (!role) return [];
+        return role.members.map(m => `${m.user.tag}`);
       });
 
-      const allMods = [...userList, ...roleMembers];
+      const allMods = [...new Set([...userList, ...roleMembers])];
 
       const embed = new EmbedBuilder()
         .setColor(0x5865F2)
