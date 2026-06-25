@@ -50,6 +50,7 @@ const COC_STATE_PATH = path.join(__dirname, 'coc-war-state.json');
 const cocWar = {
   type: null,
   phase: null,
+  startedAt: null,
   prepEndsAt: null,
   battleEndsAt: null,
   guildId: null,
@@ -60,6 +61,7 @@ function cocSaveState() {
   const data = {
     type: cocWar.type,
     phase: cocWar.phase,
+    startedAt: cocWar.startedAt,
     prepEndsAt: cocWar.prepEndsAt,
     battleEndsAt: cocWar.battleEndsAt,
     guildId: cocWar.guildId
@@ -87,6 +89,7 @@ function cocLoadState() {
 function cocClearState() {
   cocWar.type = null;
   cocWar.phase = null;
+  cocWar.startedAt = null;
   cocWar.prepEndsAt = null;
   cocWar.battleEndsAt = null;
   cocWar.guildId = null;
@@ -312,12 +315,15 @@ client.on('messageCreate', async (message) => {
     }
 
     if (content === '!rules') {
-      const rulesList = serverRules.rules.map((r, i) => `${i + 1}. ${r}`).join('\n');
+      const rulesList = serverRules.rules.map((r, i) => `\`${i + 1}.\` ${r}`).join('\n');
       const embed = new EmbedBuilder()
         .setColor(0x57F287)
+        .setAuthor({ name: 'Server Guidelines', iconURL: message.guild.iconURL() })
         .setTitle(serverRules.title)
         .setDescription(serverRules.description)
-        .addFields({ name: '📜 Rules', value: rulesList });
+        .addFields({ name: '📜 Rules', value: rulesList })
+        .setFooter({ text: message.guild.name })
+        .setTimestamp();
 
       await message.channel.send({ embeds: [embed] });
       return;
@@ -337,7 +343,7 @@ client.on('messageCreate', async (message) => {
           if (!role) continue;
           members.forEach(m => {
             if (m.roles.cache.has(roleId)) {
-              roleMods.push(`${m.user.tag}`);
+              roleMods.push(`<@${m.id}>`);
             }
           });
         }
@@ -347,8 +353,11 @@ client.on('messageCreate', async (message) => {
 
       const embed = new EmbedBuilder()
         .setColor(0x5865F2)
+        .setAuthor({ name: 'Staff Team', iconURL: message.guild.iconURL() })
         .setTitle('🛡️ Moderators')
-        .setDescription(allMods.length > 0 ? allMods.join('\n') : 'None configured');
+        .setDescription(allMods.length > 0 ? allMods.join('\n') : 'None configured')
+        .setFooter({ text: `${allMods.length} moderator(s)` })
+        .setTimestamp();
 
       await message.channel.send({ embeds: [embed] });
       return;
@@ -484,11 +493,13 @@ client.on('messageCreate', async (message) => {
       const word = parts.slice(1).join(' ').toLowerCase();
 
       if (action === 'list') {
-        const words = config.badWords.map((w, i) => `${i + 1}. ${w}`).join('\n') || 'None';
+        const words = config.badWords.map((w, i) => `\`${i + 1}.\` ||${w}||`).join('\n') || 'None';
         const embed = new EmbedBuilder()
           .setColor(0xED4245)
-          .setTitle('🚫 Bad Words List')
-          .setDescription(words);
+          .setAuthor({ name: 'Auto-Moderation' })
+          .setTitle('🚫 Filtered Words')
+          .setDescription(words || 'No words configured')
+          .setFooter({ text: `${config.badWords.length} word(s) filtered` });
         await message.channel.send({ embeds: [embed] });
 
       } else if (action === 'add' && word) {
@@ -553,6 +564,7 @@ client.on('messageCreate', async (message) => {
         const now = Date.now();
         cocWar.type = 'normal';
         cocWar.phase = 'preparation';
+        cocWar.startedAt = now;
         cocWar.prepEndsAt = now + prepMs;
         cocWar.battleEndsAt = now + prepMs + DAY;
         cocWar.guildId = message.guild.id;
@@ -572,6 +584,7 @@ client.on('messageCreate', async (message) => {
         const now = Date.now();
         cocWar.type = 'cwl';
         cocWar.phase = 'preparation';
+        cocWar.startedAt = now;
         cocWar.prepEndsAt = now + DAY;
         cocWar.battleEndsAt = now + DAY + 7 * DAY;
         cocWar.guildId = message.guild.id;
@@ -589,24 +602,24 @@ client.on('messageCreate', async (message) => {
         }
 
         const now = Date.now();
-        let desc;
-
-        if (cocWar.phase === 'preparation') {
-          desc = `📅 **Preparation Phase**\nTime left: ${cocFormatTime(cocWar.prepEndsAt - now)}`;
-        } else if (cocWar.phase === 'battle') {
-          desc = `⚔️ **Battle Phase**\nTime left: ${cocFormatTime(cocWar.battleEndsAt - now)}`;
-        } else {
-          desc = '🏁 War has ended.';
-        }
+        const phaseEmoji = cocWar.phase === 'preparation' ? '📅' : '⚔️';
+        const phaseName = cocWar.phase === 'preparation' ? 'Preparation' : 'Battle';
+        const remaining = cocWar.phase === 'preparation'
+          ? cocWar.prepEndsAt - now
+          : cocWar.battleEndsAt - now;
 
         const embed = new EmbedBuilder()
           .setColor(cocWar.type === 'cwl' ? 0xFFD700 : 0x57F287)
-          .setTitle(`🏰 ${cocWar.type.toUpperCase()} War Status`)
-          .setDescription(desc)
+          .setAuthor({ name: 'Clash of Clans' })
+          .setTitle(`🏰 ${cocWar.type.toUpperCase()} War`)
           .addFields(
+            { name: `${phaseEmoji} Phase`, value: phaseName, inline: true },
+            { name: '⏳ Time Remaining', value: cocFormatTime(remaining), inline: true },
             { name: '📅 Prep ends', value: `<t:${Math.floor(cocWar.prepEndsAt / 1000)}:R>`, inline: true },
             { name: '⚔️ Battle ends', value: `<t:${Math.floor(cocWar.battleEndsAt / 1000)}:R>`, inline: true }
-          );
+          )
+          .setFooter({ text: `Started` })
+          .setTimestamp(cocWar.startedAt);
 
         await message.channel.send({ embeds: [embed] });
 
@@ -749,7 +762,7 @@ client.on('interactionCreate', async (interaction) => {
     if (!canReview(member)) {
       return interaction.reply({
         content: '❌ You are not allowed to review moderated messages.',
-        ephemeral: true
+        flags: 64
       });
     }
 
@@ -757,14 +770,15 @@ client.on('interactionCreate', async (interaction) => {
     // WELCOME LANDING PAGE BUTTONS
     // --------------------------------------------
     if (interaction.customId === 'welcome_rules') {
-      const rulesList = serverRules.rules.map((r, i) => `${i + 1}. ${r}`).join('\n');
+      const rulesList = serverRules.rules.map((r, i) => `\`${i + 1}.\` ${r}`).join('\n');
       const embed = new EmbedBuilder()
         .setColor(0x57F287)
+        .setAuthor({ name: interaction.guild.name, iconURL: interaction.guild.iconURL() })
         .setTitle(serverRules.title)
         .setDescription(serverRules.description)
         .addFields({ name: '📜 Rules', value: rulesList });
 
-      return interaction.reply({ embeds: [embed], ephemeral: true });
+      return interaction.reply({ embeds: [embed], flags: 64 });
     }
 
     if (interaction.customId === 'welcome_channels') {
@@ -772,14 +786,15 @@ client.on('interactionCreate', async (interaction) => {
       const filesChannel = config.filesChannelId ? `<#${config.filesChannelId}>` : 'N/A';
       const embed = new EmbedBuilder()
         .setColor(0x5865F2)
-        .setTitle('📁 Channel Guide')
-        .setDescription('Here are the main channels and what they are for:')
+        .setAuthor({ name: 'Channel Guide', iconURL: interaction.guild.iconURL() })
+        .setTitle('📁 Where to Post')
+        .setDescription('Use the right channels to keep things organized:')
         .addFields(
-          { name: '🖼️ Media', value: `Post images/videos in ${mediaChannel}`, inline: true },
-          { name: '📄 Files', value: `Post documents in ${filesChannel}`, inline: true }
+          { name: '🖼️ Images & Videos', value: `→ ${mediaChannel}`, inline: true },
+          { name: '📄 Documents & Files', value: `→ ${filesChannel}`, inline: true }
         );
 
-      return interaction.reply({ embeds: [embed], ephemeral: true });
+      return interaction.reply({ embeds: [embed], flags: 64 });
     }
 
     if (interaction.customId === 'welcome_help') {
@@ -787,13 +802,13 @@ client.on('interactionCreate', async (interaction) => {
         .setColor(0xFEE75C)
         .setTitle('🆘 Need Help?')
         .setDescription(
-          'If you need assistance, you can:\n\n' +
-          '• Ask in the general chat\n' +
-          '• Ping a moderator or admin\n' +
-          '• Check the rules for guidelines'
+          'If you need assistance:\n\n' +
+          '💬 Ask in **general chat**\n' +
+          '🔔 **Ping a moderator** or admin\n' +
+          '📜 Check **server rules** for guidelines'
         );
 
-      return interaction.reply({ embeds: [embed], ephemeral: true });
+      return interaction.reply({ embeds: [embed], flags: 64 });
     }
 
     const [action, ...rest] = interaction.customId.split('_');
@@ -802,7 +817,7 @@ client.on('interactionCreate', async (interaction) => {
     if (!pendingReviews.has(reviewId)) {
       return interaction.reply({
         content: '⚠️ This review is no longer available.',
-        ephemeral: true
+        flags: 64
       });
     }
 
@@ -813,7 +828,7 @@ client.on('interactionCreate', async (interaction) => {
       pendingReviews.delete(reviewId);
       return interaction.reply({
         content: '⚠️ Original channel not found.',
-        ephemeral: true
+        flags: 64
       });
     }
 
@@ -900,12 +915,12 @@ client.on('interactionCreate', async (interaction) => {
       if (interaction.replied || interaction.deferred) {
         await interaction.followUp({
           content: 'An error occurred while processing that action.',
-          ephemeral: true
+          flags: 64
         });
       } else {
         await interaction.reply({
           content: 'An error occurred while processing that action.',
-          ephemeral: true
+          flags: 64
         });
       }
     } catch {}
