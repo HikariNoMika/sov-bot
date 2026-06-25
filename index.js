@@ -815,7 +815,7 @@ client.on('messageCreate', async (message) => {
   }
 
   // Catch-all: unknown !command
-  if (content.startsWith('!')) {
+  if (message.content.startsWith('!')) {
     const embed = new EmbedBuilder()
       .setColor(0x5865F2)
       .setAuthor({ name: client.user.username, iconURL: client.user.displayAvatarURL() })
