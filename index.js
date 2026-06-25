@@ -289,7 +289,7 @@ client.on('messageCreate', async (message) => {
 
       const args = content.slice(5).trim().split(/\s+/);
 
-      if (args[0] === 'war' && args[1] === 'normal') {
+      if (args[0] === 'start' && args[1] === 'war') {
         if (cocWar.phase && cocWar.phase !== 'ended') {
           await message.channel.send('⚠️ A war is already ongoing! Use `!coc cancel` first.');
           return;
@@ -306,7 +306,7 @@ client.on('messageCreate', async (message) => {
         await message.channel.send(`⚔️ **Normal War started!**\n📅 Preparation: 24h\n⚔️ Battle: 24h\nTotal: 2 days`);
         cocSend(message.guild, `🏰 **A Clan War has started!** Preparation phase is active. Get your bases ready!`);
 
-      } else if (args[0] === 'war' && args[1] === 'cwl') {
+      } else if (args[0] === 'start' && args[1] === 'cwl') {
         if (cocWar.phase && cocWar.phase !== 'ended') {
           await message.channel.send('⚠️ A war is already ongoing! Use `!coc cancel` first.');
           return;
@@ -367,8 +367,8 @@ client.on('messageCreate', async (message) => {
       } else {
         await message.channel.send(
           '**CoC Commands:**\n' +
-          '`!coc war normal` - Start normal war (2 days)\n' +
-          '`!coc war cwl` - Start CWL (8 days)\n' +
+          '`!coc start war` - Start normal war (2 days)\n' +
+          '`!coc start cwl` - Start CWL (8 days)\n' +
           '`!coc status` - Check war status\n' +
           '`!coc cancel` - Cancel current war'
         );
