@@ -785,6 +785,33 @@ client.on('messageCreate', async (message) => {
     }
 
     // --------------------------------------------
+    // FUN: POGI (random member)
+    // --------------------------------------------
+    if (content === '!pogi') {
+      const members = await message.guild.members.fetch();
+      const humans = members.filter(m => !m.user.bot);
+      const random = humans.random();
+      const joinPos = [...humans.values()].sort((a, b) => a.joinedAt - b.joinedAt).findIndex(m => m.id === random.id) + 1;
+
+      const embed = new EmbedBuilder()
+        .setColor(0xFEE75C)
+        .setTitle('🌟 POGI CHAMPION')
+        .setDescription(`Congratulations <@${random.id}>, you are the **Pogi**! 🎉`)
+        .setThumbnail(random.user.displayAvatarURL({ size: 256 }))
+        .addFields(
+          { name: '👤 User', value: `${random.user.tag}`, inline: true },
+          { name: '🆔 ID', value: random.id, inline: true },
+          { name: '📅 Join Position', value: `#${joinPos}`, inline: true },
+          { name: '📆 Joined', value: `<t:${Math.floor(random.joinedAt / 1000)}:R>`, inline: true }
+        )
+        .setFooter({ text: `Requested by ${message.author.tag}` })
+        .setTimestamp();
+
+      await message.channel.send({ embeds: [embed] });
+      return;
+    }
+
+    // --------------------------------------------
     // UNKNOWN COMMAND CATCH-ALL
     // --------------------------------------------
     if (message.content.startsWith('!')) {
