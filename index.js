@@ -364,6 +364,67 @@ client.on('messageCreate', async (message) => {
     }
 
     // --------------------------------------------
+    // POLL
+    // --------------------------------------------
+    if (content.startsWith('!poll ')) {
+      const question = content.slice(6).trim();
+      if (!question) {
+        await message.channel.send('⚠️ Usage: `!poll Your question here`');
+        return;
+      }
+
+      const embed = new EmbedBuilder()
+        .setColor(0x5865F2)
+        .setAuthor({ name: message.author.tag, iconURL: message.author.displayAvatarURL() })
+        .setTitle('📊 Poll')
+        .setDescription(question)
+        .setFooter({ text: 'Vote using the buttons below' })
+        .setTimestamp();
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('poll_yes').setLabel('✅ Yes').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('poll_no').setLabel('❌ No').setStyle(ButtonStyle.Danger)
+      );
+
+      await message.channel.send({ embeds: [embed], components: [row] });
+      return;
+    }
+
+    // --------------------------------------------
+    // SUGGEST
+    // --------------------------------------------
+    if (content.startsWith('!suggest ')) {
+      const suggestion = content.slice(9).trim();
+      if (!suggestion) {
+        await message.channel.send('⚠️ Usage: `!suggest Your suggestion here`');
+        return;
+      }
+
+      const channel = message.guild.channels.cache.get(config.suggestionChannelId);
+      if (!channel) {
+        await message.channel.send('⚠️ Suggestions channel not configured.');
+        return;
+      }
+
+      const embed = new EmbedBuilder()
+        .setColor(0xFEE75C)
+        .setAuthor({ name: message.author.tag, iconURL: message.author.displayAvatarURL() })
+        .setTitle('💡 Suggestion')
+        .setDescription(suggestion)
+        .setFooter({ text: `ID: ${message.author.id}` })
+        .setTimestamp();
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('suggest_up').setLabel('👍').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('suggest_down').setLabel('👎').setStyle(ButtonStyle.Danger)
+      );
+
+      const sent = await channel.send({ embeds: [embed], components: [row] });
+      await message.channel.send(`✅ Your suggestion has been posted in ${channel}.`);
+      return;
+    }
+
+    // --------------------------------------------
     // MODERATION: BAN
     // --------------------------------------------
     if (content.startsWith('!ban ')) {
@@ -467,6 +528,10 @@ client.on('messageCreate', async (message) => {
             '`!badwords list` — View filtered words\n' +
             '`!badwords add <word>` — Add filter (mods)\n' +
             '`!badwords remove <word>` — Remove filter (mods)',
+            inline: false },
+          { name: '📊 **Community**', value:
+            '`!poll <question>` — Create a yes/no poll\n' +
+            '`!suggest <idea>` — Submit a suggestion',
             inline: false },
           { name: '🏰 **CoC War**', value:
             '`!coc status` — Current war timer\n' +
@@ -759,15 +824,8 @@ client.on('interactionCreate', async (interaction) => {
 
     const member = interaction.member;
 
-    if (!canReview(member)) {
-      return interaction.reply({
-        content: '❌ You are not allowed to review moderated messages.',
-        flags: 64
-      });
-    }
-
     // --------------------------------------------
-    // WELCOME LANDING PAGE BUTTONS
+    // PUBLIC BUTTONS (no mod check)
     // --------------------------------------------
     if (interaction.customId === 'welcome_rules') {
       const rulesList = serverRules.rules.map((r, i) => `\`${i + 1}.\` ${r}`).join('\n');
@@ -809,6 +867,56 @@ client.on('interactionCreate', async (interaction) => {
         );
 
       return interaction.reply({ embeds: [embed], flags: 64 });
+    }
+
+    // --------------------------------------------
+    // POLL BUTTONS
+    // --------------------------------------------
+    if (interaction.customId === 'poll_yes' || interaction.customId === 'poll_no') {
+      const message = interaction.message;
+      const embed = EmbedBuilder.from(message.embeds[0]);
+      const fieldName = interaction.customId === 'poll_yes' ? '✅ Yes' : '❌ No';
+      const existing = embed.data.fields?.find(f => f.name === fieldName);
+      const count = existing ? parseInt(existing.value) + 1 : 1;
+
+      const yesField = { name: '✅ Yes', value: interaction.customId === 'poll_yes' ? `${count}` : `${embed.data.fields?.find(f => f.name === '✅ Yes')?.value || 0}`, inline: true };
+      const noField = { name: '❌ No', value: interaction.customId === 'poll_no' ? `${count}` : `${embed.data.fields?.find(f => f.name === '❌ No')?.value || 0}`, inline: true };
+
+      embed.spliceFields(0, embed.data.fields?.length || 0);
+      embed.addFields(yesField, noField);
+
+      await interaction.update({ embeds: [embed] });
+      return;
+    }
+
+    // --------------------------------------------
+    // SUGGEST BUTTONS
+    // --------------------------------------------
+    if (interaction.customId === 'suggest_up' || interaction.customId === 'suggest_down') {
+      const message = interaction.message;
+      const embed = EmbedBuilder.from(message.embeds[0]);
+      const fieldName = interaction.customId === 'suggest_up' ? '👍' : '👎';
+      const existing = embed.data.fields?.find(f => f.name === fieldName);
+      const count = existing ? parseInt(existing.value) + 1 : 1;
+
+      const upField = { name: '👍', value: interaction.customId === 'suggest_up' ? `${count}` : `${embed.data.fields?.find(f => f.name === '👍')?.value || 0}`, inline: true };
+      const downField = { name: '👎', value: interaction.customId === 'suggest_down' ? `${count}` : `${embed.data.fields?.find(f => f.name === '👎')?.value || 0}`, inline: true };
+
+      embed.spliceFields(0, embed.data.fields?.length || 0);
+      embed.addFields(upField, downField);
+
+      await interaction.update({ embeds: [embed] });
+      return;
+    }
+
+    // --------------------------------------------
+    // REVIEW BUTTONS (mods only)
+    // --------------------------------------------
+    if (!canReview(member)) {
+      return interaction.reply({
+        content: '❌ You are not allowed to review moderated messages.',
+        flags: 64
+      });
     }
 
     const [action, ...rest] = interaction.customId.split('_');
