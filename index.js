@@ -324,12 +324,15 @@ client.on('messageCreate', async (message) => {
     }
 
     if (content === '!mods' || content === '!moderators') {
-      const userList = config.moderatorUserIds.map(id => `<@${id}>`);
+      const userIds = config.moderatorUserIds || [];
+      const roleIds = config.moderatorRoleIds || [];
+
+      const userList = userIds.map(id => `<@${id}>`);
 
       const roleMods = [];
-      if (config.moderatorRoleIds.length > 0) {
+      if (roleIds.length > 0) {
         const members = await message.guild.members.fetch();
-        for (const roleId of config.moderatorRoleIds) {
+        for (const roleId of roleIds) {
           const role = message.guild.roles.cache.get(roleId);
           if (!role) continue;
           members.forEach(m => {
