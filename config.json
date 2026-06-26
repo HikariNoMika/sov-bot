@@ -3,6 +3,8 @@
   "mediaChannelId": "1519317887225958411",
   "filesChannelId": "1519317887225958411",
   "cocChannelId": "1519610519710072832",
+  "generalChannelId": "",
+  "suggestionChannelId": "",
 
   "blockedAttachmentChannels": [
     "1414227641942278155"
