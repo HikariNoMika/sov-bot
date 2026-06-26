@@ -555,6 +555,11 @@ client.on('messageCreate', async (message) => {
             '`!badwords add <word>` — Add filter (mods)\n' +
             '`!badwords remove <word>` — Remove filter (mods)',
             inline: false },
+          { name: '🎮 **Games**', value:
+            '`!ttt @user` — Tic Tac Toe\n' +
+            '`!rps @user` — Rock Paper Scissors\n' +
+            '`!pogi` — Random member picker',
+            inline: false },
           { name: '📊 **Community**', value:
             '`!poll <question>` — Create a yes/no poll\n' +
             '`!suggest <idea>` — Submit a suggestion',
@@ -944,6 +949,7 @@ client.on('messageCreate', async (message) => {
         .addFields(
           { name: '👋 **Welcome**', value: '`!welcome` (mods) · `!rules` · `!mods`' },
           { name: '🚫 **Moderation**', value: '`!ban` (mods) · `!mute` (mods) · `!unmute` (mods) · `!badwords`' },
+          { name: '🎮 **Games**', value: '`!ttt` · `!rps` · `!pogi`' },
           { name: '📊 **Community**', value: '`!poll` · `!suggest`' },
           { name: '🏰 **CoC War**', value: '`!coc status` · `!coc start war` (mods) · `!coc start cwl` (mods) · `!coc cancel` (mods)' }
         )
