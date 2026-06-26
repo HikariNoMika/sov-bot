@@ -1077,7 +1077,7 @@ client.on('interactionCreate', async (interaction) => {
       }
 
       const draw = !winner && game.board.every(c => c !== null);
-      const over = winner || draw;
+      const over = !!(winner || draw);
 
       const xLabel = winner === 'x' ? '❌ X' : '❌';
       const oLabel = winner === 'o' ? '⭕ O' : '⭕';
