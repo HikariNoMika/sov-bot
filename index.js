@@ -44,6 +44,7 @@ const client = new Client({
 // Stores pending bad-word reviews temporarily while bot is running
 const pendingReviews = new Map();
 const tttGames = new Map();
+const rpsGames = new Map();
 
 // Stores rules embed data
 const serverRules = config.serverRules || {
@@ -893,6 +894,45 @@ client.on('messageCreate', async (message) => {
     }
 
     // --------------------------------------------
+    // ROCK PAPER SCISSORS
+    // --------------------------------------------
+    if (content.startsWith('!rps ')) {
+      const opponent = message.mentions.members.first();
+      if (!opponent || opponent.user.bot || opponent.id === message.author.id) {
+        await message.channel.send('⚠️ Mention someone to play. Usage: `!rps @user`');
+        return;
+      }
+
+      const rpsId = `${message.author.id}_${opponent.id}_${Date.now()}`;
+      rpsGames.set(rpsId, {
+        players: { 1: message.author.id, 2: opponent.id },
+        choices: {},
+        turn: 1
+      });
+
+      const embed = new EmbedBuilder()
+        .setColor(0x5865F2)
+        .setTitle('🪨 Rock Paper Scissors ✂️')
+        .setDescription(`<@${message.author.id}> challenges <@${opponent.id}>!\n\nMake your choice using the buttons below.`)
+        .setFooter({ text: 'Both players pick in secret, then results are revealed!' });
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`rps_${rpsId}_1_rock`).setLabel('🪨 Rock').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId(`rps_${rpsId}_1_paper`).setLabel('📄 Paper').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId(`rps_${rpsId}_1_scissors`).setLabel('✂️ Scissors').setStyle(ButtonStyle.Secondary)
+      );
+
+      const sent = await message.channel.send({ embeds: [embed], components: [row] });
+
+      setTimeout(() => {
+        rpsGames.delete(rpsId);
+        sent.edit({ components: [] }).catch(() => {});
+      }, 120000);
+
+      return;
+    }
+
+    // --------------------------------------------
     // UNKNOWN COMMAND CATCH-ALL
     // --------------------------------------------
     if (message.content.startsWith('!')) {
@@ -1112,6 +1152,68 @@ client.on('interactionCreate', async (interaction) => {
 
       if (over) tttGames.delete(gameId);
       await interaction.update({ embeds: [embed], components: over ? [] : rows });
+      return;
+    }
+
+    // --------------------------------------------
+    // ROCK PAPER SCISSORS BUTTONS
+    // --------------------------------------------
+    if (interaction.customId.startsWith('rps_')) {
+      const parts = interaction.customId.split('_');
+      const rpsId = parts.slice(1, -2).join('_');
+      const turn = parseInt(parts[parts.length - 2]);
+      const choice = parts[parts.length - 1];
+      const game = rpsGames.get(rpsId);
+
+      if (!game) {
+        return interaction.reply({ content: '⚠️ This game has expired.', flags: 64 });
+      }
+
+      if (interaction.user.id !== game.players[turn]) {
+        return interaction.reply({ content: '❌ It\'s not your turn to pick.', flags: 64 });
+      }
+
+      game.choices[turn] = choice;
+
+      if (turn === 1) {
+        game.turn = 2;
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId(`rps_${rpsId}_2_rock`).setLabel('🪨 Rock').setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId(`rps_${rpsId}_2_paper`).setLabel('📄 Paper').setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId(`rps_${rpsId}_2_scissors`).setLabel('✂️ Scissors').setStyle(ButtonStyle.Secondary)
+        );
+
+        const embed = EmbedBuilder.from(interaction.message.embeds[0])
+          .setDescription(`<@${game.players[1]}> has chosen! Now it's <@${game.players[2]}>'s turn.`);
+
+        await interaction.update({ embeds: [embed], components: [row] });
+      } else {
+        const p1choice = game.choices[1];
+        const p2choice = game.choices[2];
+        const p1id = game.players[1];
+        const p2id = game.players[2];
+
+        const beats = { rock: 'scissors', paper: 'rock', scissors: 'paper' };
+        let result;
+        if (p1choice === p2choice) {
+          result = `🤝 **It's a draw!** Both chose ${p1choice}.`;
+        } else if (beats[p1choice] === p2choice) {
+          result = `<@${p1id}> wins! 🎉`;
+        } else {
+          result = `<@${p2id}> wins! 🎉`;
+        }
+
+        const emojis = { rock: '🪨', paper: '📄', scissors: '✂️' };
+        const embed = EmbedBuilder.from(interaction.message.embeds[0])
+          .setDescription(
+            `${emojis[p1choice]} <@${p1id}> chose **${p1choice}**\n` +
+            `${emojis[p2choice]} <@${p2id}> chose **${p2choice}**\n\n` +
+            `**${result}**`
+          );
+
+        rpsGames.delete(rpsId);
+        await interaction.update({ embeds: [embed], components: [] });
+      }
       return;
     }
 
