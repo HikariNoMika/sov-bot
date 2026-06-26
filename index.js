@@ -1116,6 +1116,7 @@ const PORT = process.env.PORT || 3000;
 http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain' });
   res.end('Bot is running!');
-}).listen(PORT, () => console.log(`HTTP server on port ${PORT}`));
+}).listen(PORT, () => console.log(`HTTP server on port ${PORT}`))
+  .on('error', (e) => console.log(`HTTP server unavailable (${e.code}) - bot still works`));
 
 client.login(process.env.TOKEN);
