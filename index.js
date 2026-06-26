@@ -1110,4 +1110,12 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 
+// Simple HTTP server for Render/UptimeRobot
+const http = require('http');
+const PORT = process.env.PORT || 3000;
+http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('Bot is running!');
+}).listen(PORT, () => console.log(`HTTP server on port ${PORT}`));
+
 client.login(process.env.TOKEN);
