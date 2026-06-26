@@ -43,6 +43,7 @@ const client = new Client({
 
 // Stores pending bad-word reviews temporarily while bot is running
 const pendingReviews = new Map();
+const tttGames = new Map();
 
 // Stores rules embed data
 const serverRules = config.serverRules || {
@@ -839,6 +840,59 @@ client.on('messageCreate', async (message) => {
     }
 
     // --------------------------------------------
+    // TIC TAC TOE
+    // --------------------------------------------
+    if (content.startsWith('!ttt ')) {
+      const opponent = message.mentions.members.first();
+      if (!opponent || opponent.user.bot || opponent.id === message.author.id) {
+        await message.channel.send('⚠️ Mention another member to play. Usage: `!ttt @user`');
+        return;
+      }
+
+      const gameId = `${message.author.id}_${opponent.id}_${Date.now()}`;
+      const board = Array(9).fill(null);
+      const game = {
+        board,
+        players: { x: message.author.id, o: opponent.id },
+        names: { x: message.author.username, o: opponent.user.username },
+        turn: 'x',
+        message: null
+      };
+      tttGames.set(gameId, game);
+
+      const embed = new EmbedBuilder()
+        .setColor(0x5865F2)
+        .setTitle('❌ Tic Tac Toe ⭕')
+        .setDescription(`**${message.author.username}** (X) vs **${opponent.user.username}** (O)\n\nTurn: <@${message.author.id}>`)
+        .setFooter({ text: 'Click a button to place your mark' });
+
+      const row1 = new ActionRowBuilder();
+      const row2 = new ActionRowBuilder();
+      const row3 = new ActionRowBuilder();
+      for (let i = 0; i < 9; i++) {
+        const btn = new ButtonBuilder()
+          .setCustomId(`ttt_${gameId}_${i}`)
+          .setLabel('⬜')
+          .setStyle(ButtonStyle.Secondary);
+        if (i < 3) row1.addComponents(btn);
+        else if (i < 6) row2.addComponents(btn);
+        else row3.addComponents(btn);
+      }
+
+      const sent = await message.channel.send({ embeds: [embed], components: [row1, row2, row3] });
+      game.message = sent;
+
+      // Clean up after 5 minutes
+      setTimeout(() => {
+        if (tttGames.has(gameId)) {
+          tttGames.delete(gameId);
+          sent.edit({ components: [] }).catch(() => {});
+        }
+      }, 300000);
+      return;
+    }
+
+    // --------------------------------------------
     // UNKNOWN COMMAND CATCH-ALL
     // --------------------------------------------
     if (message.content.startsWith('!')) {
@@ -981,6 +1035,83 @@ client.on('interactionCreate', async (interaction) => {
       embed.addFields(upField, downField);
 
       await interaction.update({ embeds: [embed] });
+      return;
+    }
+
+    // --------------------------------------------
+    // TIC TAC TOE BUTTONS
+    // --------------------------------------------
+    if (interaction.customId.startsWith('ttt_')) {
+      const parts = interaction.customId.split('_');
+      const gameId = parts.slice(1, -1).join('_');
+      const idx = parseInt(parts[parts.length - 1]);
+      const game = tttGames.get(gameId);
+
+      if (!game) {
+        return interaction.reply({ content: '⚠️ This game has expired.', flags: 64 });
+      }
+
+      if (game.board[idx] !== null) {
+        return interaction.reply({ content: '⚠️ That spot is already taken!', flags: 64 });
+      }
+
+      const currentPlayerId = game.players[game.turn];
+      if (interaction.user.id !== currentPlayerId) {
+        return interaction.reply({ content: '❌ Not your turn!', flags: 64 });
+      }
+
+      game.board[idx] = game.turn;
+
+      // Win check
+      const winPatterns = [
+        [0,1,2], [3,4,5], [6,7,8],
+        [0,3,6], [1,4,7], [2,5,8],
+        [0,4,8], [2,4,6]
+      ];
+      let winner = null;
+      for (const [a,b,c] of winPatterns) {
+        if (game.board[a] && game.board[a] === game.board[b] && game.board[a] === game.board[c]) {
+          winner = game.board[a];
+          break;
+        }
+      }
+
+      const draw = !winner && game.board.every(c => c !== null);
+      const over = winner || draw;
+
+      const xLabel = winner === 'x' ? '❌ X' : '❌';
+      const oLabel = winner === 'o' ? '⭕ O' : '⭕';
+
+      let desc;
+      if (winner) {
+        const winnerName = game.names[winner];
+        desc = `**${winnerName} (${winner.toUpperCase()}) wins!** 🎉\n\n${game.names.x} ${xLabel} vs ${game.names.o} ${oLabel}`;
+      } else if (draw) {
+        desc = `It's a draw! 🤝\n\n${game.names.x} ${xLabel} vs ${game.names.o} ${oLabel}`;
+      } else {
+        game.turn = game.turn === 'x' ? 'o' : 'x';
+        desc = `Turn: <@${game.players[game.turn]}>`;
+      }
+
+      const embed = EmbedBuilder.from(interaction.message.embeds[0])
+        .setDescription(desc);
+
+      const labels = { x: '❌', o: '⭕', null: '⬜' };
+      const rows = [new ActionRowBuilder(), new ActionRowBuilder(), new ActionRowBuilder()];
+      for (let i = 0; i < 9; i++) {
+        const val = game.board[i];
+        const btn = new ButtonBuilder()
+          .setCustomId(`ttt_${gameId}_${i}`)
+          .setLabel(labels[val] || '⬜')
+          .setStyle(val ? ButtonStyle.Secondary : (over ? ButtonStyle.Secondary : ButtonStyle.Primary))
+          .setDisabled(over || val !== null);
+        if (i < 3) rows[0].addComponents(btn);
+        else if (i < 6) rows[1].addComponents(btn);
+        else rows[2].addComponents(btn);
+      }
+
+      if (over) tttGames.delete(gameId);
+      await interaction.update({ embeds: [embed], components: over ? [] : rows });
       return;
     }
 
