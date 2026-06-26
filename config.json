@@ -1,0 +1,37 @@
+{
+  "welcomeChannelId": "1519268945180491927",
+  "mediaChannelId": "1519317887225958411",
+  "filesChannelId": "1519317887225958411",
+  "cocChannelId": "1519610519710072832",
+
+  "blockedAttachmentChannels": [
+    "1414227641942278155"
+  ],
+
+  "deleteWrongAttachments": true,
+
+  "serverRules": {
+    "title": "Server Rules",
+    "description": "Please follow these rules to keep the server enjoyable for everyone:",
+    "rules": [
+      "Be respectful to all members",
+      "No explicit or inappropriate content",
+      "No spam or self-promotion",
+      "Follow Discord Terms of Service",
+      "Use channels for their intended purpose"
+    ]
+  },
+
+  "badWords": [
+    "putangina",
+    "ulol",
+    "bobo",
+    "burat",
+    "sex",
+    "dangkal",
+    "testing"
+  ],
+
+  "moderatorRoleIds": ["1519333608169668759"]
+
+}

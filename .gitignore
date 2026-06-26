@@ -4,8 +4,8 @@ node_modules/
 # Environment variables
 .env
 
-# Configuration (may contain secrets)
-config.json
+# CoC war persisted state
+coc-war-state.json
 
 # Logs
 logs/
