@@ -23,6 +23,7 @@ const envOverrides = {
   cocChannelId: process.env.COC_CHANNEL_ID,
   generalChannelId: process.env.GENERAL_CHANNEL_ID,
   suggestionChannelId: process.env.SUGGESTION_CHANNEL_ID,
+  gamesChannelId: process.env.GAMES_CHANNEL_ID,
   blockedAttachmentChannels: process.env.BLOCKED_CHANNELS ? process.env.BLOCKED_CHANNELS.split(',') : undefined,
   moderatorUserIds: process.env.MOD_USER_IDS ? process.env.MOD_USER_IDS.split(',') : undefined,
   moderatorRoleIds: process.env.MOD_ROLE_IDS ? process.env.MOD_ROLE_IDS.split(',') : undefined
@@ -822,6 +823,10 @@ client.on('messageCreate', async (message) => {
     // FUN: POGI (random member)
     // --------------------------------------------
     if (content === '!pogi') {
+      if (config.gamesChannelId && message.channel.id !== config.gamesChannelId) {
+        await message.channel.send(`🎮 Please use this in <#${config.gamesChannelId}>!`);
+        return;
+      }
       const members = await message.guild.members.fetch();
       const humans = members.filter(m => !m.user.bot);
       const random = humans.random();
@@ -849,6 +854,10 @@ client.on('messageCreate', async (message) => {
     // TIC TAC TOE
     // --------------------------------------------
     if (content.startsWith('!ttt ')) {
+      if (config.gamesChannelId && message.channel.id !== config.gamesChannelId) {
+        await message.channel.send(`🎮 Please use this in <#${config.gamesChannelId}>!`);
+        return;
+      }
       const opponent = message.mentions.members.first();
       if (!opponent || opponent.user.bot || opponent.id === message.author.id) {
         await message.channel.send('⚠️ Mention another member to play. Usage: `!ttt @user`');
@@ -902,6 +911,10 @@ client.on('messageCreate', async (message) => {
     // ROCK PAPER SCISSORS
     // --------------------------------------------
     if (content.startsWith('!rps ')) {
+      if (config.gamesChannelId && message.channel.id !== config.gamesChannelId) {
+        await message.channel.send(`🎮 Please use this in <#${config.gamesChannelId}>!`);
+        return;
+      }
       const opponent = message.mentions.members.first();
       if (!opponent || opponent.user.bot || opponent.id === message.author.id) {
         await message.channel.send('⚠️ Mention someone to play. Usage: `!rps @user`');
