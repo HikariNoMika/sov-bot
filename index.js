@@ -570,6 +570,7 @@ client.on('messageCreate', async (message) => {
             '`!coc start war [time]` — Start normal war (mods)\n' +
             '`!coc start cwl` — Start CWL season (mods)\n' +
             '`!coc cancel` — Stop war timer (mods)\n' +
+            '`!coc end` — Mark war ended (mods)\n' +
             '`!coc commands` — CoC help',
             inline: false }
         )
@@ -736,6 +737,19 @@ client.on('messageCreate', async (message) => {
         await message.channel.send('❌ War cancelled.');
         cocSend(message.guild, `❌ **The war has been cancelled.**`);
 
+      } else if (args[0] === 'end') {
+        if (!cocWar.phase || cocWar.phase === 'ended') {
+          await message.channel.send('📭 No ongoing war to end.');
+          return;
+        }
+
+        cocWar.timers.forEach(clearTimeout);
+        cocWar.timers = [];
+        cocClearState();
+
+        await message.channel.send('🏁 War ended manually.');
+        cocSend(message.guild, `🏁 **The war has ended!** Great effort, clan!`);
+
       } else {
         await message.channel.send(
           '**CoC Commands:**\n' +
@@ -744,7 +758,8 @@ client.on('messageCreate', async (message) => {
           '`!coc start war [time]` - Start normal war (mods only)\n' +
           '`!coc start war 23h` - With custom prep time\n' +
           '`!coc start cwl` - Start CWL (mods only)\n' +
-          '`!coc cancel` - Cancel current war (mods only)'
+          '`!coc cancel` - Cancel current war (mods only)\n' +
+          '`!coc end` - Mark war as ended (mods only)'
         );
       }
       return;
@@ -964,7 +979,7 @@ client.on('messageCreate', async (message) => {
           { name: '🚫 **Moderation**', value: '`!ban` (mods) · `!mute` (mods) · `!unmute` (mods) · `!badwords`' },
           { name: '🎮 **Games**', value: '`!ttt` · `!rps` · `!pogi`' },
           { name: '📊 **Community**', value: '`!poll` · `!suggest`' },
-          { name: '🏰 **CoC War**', value: '`!coc status` · `!coc start war` (mods) · `!coc start cwl` (mods) · `!coc cancel` (mods)' }
+          { name: '🏰 **CoC War**', value: '`!coc status` · `!coc start war` (mods) · `!coc start cwl` (mods) · `!coc cancel` (mods) · `!coc end` (mods)' }
         )
         .setFooter({ text: 'Use !commands for full details' });
 
