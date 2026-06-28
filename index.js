@@ -160,6 +160,11 @@ function cocScheduleNotifications(guild) {
       cocSend(guild, `⏳ **30 minutes left!** Hurry and use your remaining attacks!`);
     }, t(cocWar.battleEndsAt - Date.now() - 30 * 60 * 1000)));
 
+    // 10m remaining
+    cocWar.timers.push(setTimeout(() => {
+      cocSend(guild, `🔴 **10 minutes left!** This is your last chance to attack!`);
+    }, t(cocWar.battleEndsAt - Date.now() - 10 * 60 * 1000)));
+
     // War over
     cocWar.timers.push(setTimeout(() => {
       cocClearState();
