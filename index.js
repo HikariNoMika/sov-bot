@@ -120,10 +120,13 @@ cocLoadState();
 
 function cocSend(guild, content) {
   const channels = [config.cocChannelId, config.generalChannelId].filter(Boolean);
+  if (!channels.length) return console.log('cocSend: no channels configured');
   for (const id of [...new Set(channels)]) {
     const ch = guild.channels.cache.get(id);
     if (ch) {
-      ch.send(content).catch(e => console.log('cocSend error:', e.message));
+      ch.send(content).catch(e => console.log('cocSend error to', id, ':', e.message));
+    } else {
+      console.log('cocSend: channel not found in cache:', id);
     }
   }
 }
