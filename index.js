@@ -659,7 +659,10 @@ client.on('messageCreate', async (message) => {
     // GCASH WINNER TRACKER
     // --------------------------------------------
     if (content.startsWith('!winner ')) {
-      if (!canReview(message.member)) return;
+      if (!canReview(message.member)) {
+        await message.channel.send('❌ You need the **Sov** role or Admin permissions to use this command.');
+        return;
+      }
 
       const args = content.slice(8).trim().split(/\s+/);
       const action = args[0];
