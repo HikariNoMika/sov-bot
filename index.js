@@ -330,6 +330,7 @@ client.on('messageCreate', async (message) => {
     }
     if (config.prizeClaimChannelId && message.channel.id === config.prizeClaimChannelId) {
       if (!message.content.startsWith('!')) {
+        if (canReview(message.member)) return;
         const winners = loadWinners();
         const isWinner = winners.some(w => w.userId === message.author.id);
         if (!isWinner) {
