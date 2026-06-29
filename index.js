@@ -577,7 +577,7 @@ client.on('messageCreate', async (message) => {
             '`!badwords remove <word>` — Remove filter (mods)',
             inline: false },
           { name: '💰 **GCash**', value:
-            '`!winner add @user <amount> [reason]` — Record winner (mods)\n' +
+            '`!winner add @user [reason]` — Record ₱350 winner (mods)\n' +
             '`!winner list` — Recent winners\n' +
             '`!winner total` — Total given out',
             inline: false },
@@ -666,20 +666,15 @@ client.on('messageCreate', async (message) => {
       const user = message.mentions.members.first();
 
       if (action === 'add' && user) {
-        const amount = args[2];
-        const reason = args.slice(3).join(' ') || 'Event winner';
+        const reason = args.slice(2).join(' ') || 'Event winner';
         const proof = message.attachments.first()?.url || 'No proof';
-
-        if (!amount || isNaN(amount)) {
-          await message.channel.send('⚠️ Usage: `!winner add @user <amount> [reason]`\nAttach a screenshot as proof.');
-          return;
-        }
+        const amount = 350;
 
         const winners = loadWinners();
         winners.push({
           userId: user.id,
           userTag: user.user.tag,
-          amount: parseFloat(amount),
+          amount,
           reason,
           proof,
           addedBy: message.author.tag,
@@ -690,7 +685,7 @@ client.on('messageCreate', async (message) => {
         const embed = new EmbedBuilder()
           .setColor(0x57F287)
           .setTitle('✅ GCash Winner Recorded')
-          .setDescription(`**${user.user.tag}** won **₱${parseFloat(amount).toFixed(2)}**`)
+          .setDescription(`**${user.user.tag}** won **₱${amount.toFixed(2)}**`)
           .addFields(
             { name: 'Reason', value: reason, inline: true },
             { name: 'Recorded by', value: message.author.tag, inline: true }
@@ -726,7 +721,7 @@ client.on('messageCreate', async (message) => {
       } else {
         await message.channel.send(
           '**Winner Commands:**\n' +
-          '`!winner add @user <amount> [reason]` — Record winner (mods, attach proof)\n' +
+          '`!winner add @user [reason]` — Record ₱350 winner (mods, attach proof)\n' +
           '`!winner list` — Show recent winners\n' +
           '`!winner total` — Total GCash given'
         );
