@@ -577,7 +577,7 @@ client.on('messageCreate', async (message) => {
             '`!badwords remove <word>` — Remove filter (mods)',
             inline: false },
           { name: '💰 **GCash**', value:
-            '`!winner add @user [reason]` — Record ₱350 winner (mods)\n' +
+            '`!winner add @user1 @user2 [reason]` — Record ₱350 winner(s) (mods)\n' +
             '`!winner list` — Recent winners\n' +
             '`!winner total` — Total given out',
             inline: false },
@@ -695,6 +695,29 @@ client.on('messageCreate', async (message) => {
         saveWinners(winners);
 
         const total = amount * added.length;
+
+        // Notify winners in their DMs
+        for (const m of members.values()) {
+          try {
+            await m.send(
+              `🎉 **Congratulations!** You won **₱${amount.toFixed(2)}** in the server event!\n\n` +
+              `Please provide your **GCash number and full name** to claim your prize.\n\n` +
+              `_Event: ${reason}_`
+            );
+          } catch {
+            console.log(`Could not DM ${m.user.tag}`);
+          }
+        }
+
+        // Also post in configured claim channel
+        const claimChannel = config.prizeClaimChannelId ? message.guild.channels.cache.get(config.prizeClaimChannelId) : null;
+        if (claimChannel) {
+          const mentions = members.map(m => `<@${m.id}>`).join(' ');
+          await claimChannel.send(
+            `🎉 **Prize Claim**\n${mentions}\n\nYou won **₱${amount.toFixed(2)}**! Please provide your **GCash number and full name** below.\n_Event: ${reason}_`
+          );
+        }
+
         const embed = new EmbedBuilder()
           .setColor(0x57F287)
           .setTitle('✅ GCash Winners Recorded')
