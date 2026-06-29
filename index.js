@@ -728,8 +728,10 @@ client.on('messageCreate', async (message) => {
         await message.channel.send({ embeds });
 
       } else if (action === 'clear') {
+        const winners = loadWinners();
+        const count = winners.length;
         saveWinners([]);
-        await message.channel.send('✅ All winners cleared.');
+        await message.channel.send(`✅ Cleared **${count}** winner(s).`);
 
       } else {
         await message.channel.send(
