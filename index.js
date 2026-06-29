@@ -825,10 +825,7 @@ client.on('messageCreate', async (message) => {
         if (args[2]) {
           const timeMatch = args[2].match(/^(\d{1,2}):(\d{2})$/);
           if (timeMatch) {
-            const target = new Date();
-            target.setHours(parseInt(timeMatch[1]), parseInt(timeMatch[2]), 0, 0);
-            if (target <= new Date()) target.setDate(target.getDate() + 1);
-            prepMs = target.getTime() - Date.now();
+            prepMs = parseInt(timeMatch[1]) * HOUR + parseInt(timeMatch[2]) * 60000;
           } else {
             const durMatch = args[2].match(/^(\d+)(h|m|d)$/);
             if (durMatch) {
@@ -837,7 +834,7 @@ client.on('messageCreate', async (message) => {
               else if (durMatch[2] === 'd') hours *= 24;
               prepMs = hours * HOUR;
             } else {
-              await message.channel.send('⚠️ Invalid format. Use e.g. `!coc start war 23h`, `!coc start war 90m`, `!coc start war 21:15`');
+              await message.channel.send('⚠️ Invalid format. Use e.g. `!coc start war 23h`, `!coc start war 90m`, `!coc start war 23:30`');
               return;
             }
           }
@@ -936,8 +933,7 @@ client.on('messageCreate', async (message) => {
           '`!coc status` - Check war status (everyone)\n' +
           '`!coc commands` - Show this list (everyone)\n' +
           '`!coc start war [time]` - Start normal war (mods only)\n' +
-          '`!coc start war 23h` - With custom prep time\n' +
-          '`!coc start war 21:15` - Battle starts at 9:15 PM\n' +
+          '`!coc start war 23:30` - With custom prep time (23h 30m)\n' +
           '`!coc start cwl` - Start CWL (mods only)\n' +
           '`!coc cancel` - Cancel current war (mods only)\n' +
           '`!coc end` - Mark war as ended (mods only)'
