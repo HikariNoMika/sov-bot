@@ -253,7 +253,7 @@ function buildWelcomeLanding(member) {
     .setDescription(
       `Hello ${member}, welcome!\n\n` +
       `We're glad to have you here. Use the buttons below to get started.\n\n` +
-      `⚠️ **No chatting in this channel** — it's only for welcomes and commands.`
+      `⚠️ **No chatting in this channel** — welcomes and commands only. Go to <#${config.generalChannelId}> for discussions.`
     )
     .addFields({
       name: '📌 Quick Tips',
@@ -323,7 +323,7 @@ client.on('messageCreate', async (message) => {
     if (config.welcomeChannelId && message.channel.id === config.welcomeChannelId) {
       if (!message.content.startsWith('!')) {
         await message.delete();
-        const warn = await message.channel.send(`⚠️ ${message.author}, this channel is for welcomes and commands only. No chatting.`);
+        const warn = await message.channel.send(`⚠️ ${message.author}, this channel is for welcomes and commands only. No chatting. Go to <#${config.generalChannelId}> for discussions.`);
         setTimeout(() => warn.delete().catch(() => {}), 5000);
         return;
       }
@@ -334,7 +334,7 @@ client.on('messageCreate', async (message) => {
         const isWinner = winners.some(w => w.userId === message.author.id);
         if (!isWinner) {
           await message.delete();
-          const warn = await message.channel.send(`⚠️ ${message.author}, this channel is for winners to claim prizes only. No chatting.`);
+          const warn = await message.channel.send(`⚠️ ${message.author}, this channel is for prize claims only. No chatting. Go to <#${config.generalChannelId}> for discussions.`);
           setTimeout(() => warn.delete().catch(() => {}), 5000);
           return;
         }
