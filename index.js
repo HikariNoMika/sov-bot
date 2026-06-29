@@ -752,7 +752,11 @@ client.on('messageCreate', async (message) => {
         const winners = loadWinners();
         const count = winners.length;
         saveWinners([]);
-        await message.channel.send(`✅ Cleared **${count}** winner(s).`);
+        try {
+          await message.channel.send(`✅ Cleared **${count}** winner(s).`);
+        } catch (e) {
+          console.error('Clear notification failed:', e.message);
+        }
 
       } else {
         await message.channel.send(
