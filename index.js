@@ -15,23 +15,6 @@ const {
 
 const config = require('./config.json');
 
-// Environment variable overrides for Railway
-const envOverrides = {
-  welcomeChannelId: process.env.WELCOME_CHANNEL_ID,
-  mediaChannelId: process.env.MEDIA_CHANNEL_ID,
-  filesChannelId: process.env.FILES_CHANNEL_ID,
-  cocChannelId: process.env.COC_CHANNEL_ID,
-  generalChannelId: process.env.GENERAL_CHANNEL_ID,
-  suggestionChannelId: process.env.SUGGESTION_CHANNEL_ID,
-  gamesChannelId: process.env.GAMES_CHANNEL_ID,
-  blockedAttachmentChannels: process.env.BLOCKED_CHANNELS ? process.env.BLOCKED_CHANNELS.split(',') : undefined,
-  moderatorUserIds: process.env.MOD_USER_IDS ? process.env.MOD_USER_IDS.split(',') : undefined,
-  moderatorRoleIds: process.env.MOD_ROLE_IDS ? process.env.MOD_ROLE_IDS.split(',') : undefined
-};
-for (const [key, val] of Object.entries(envOverrides)) {
-  if (val !== undefined) config[key] = val;
-}
-
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -1526,14 +1509,5 @@ client.on('interactionCreate', async (interaction) => {
     } catch {}
   }
 });
-
-// Simple HTTP server for Render/UptimeRobot
-const http = require('http');
-const PORT = process.env.PORT || 3000;
-http.createServer((req, res) => {
-  res.writeHead(200, { 'Content-Type': 'text/plain' });
-  res.end('Bot is running!');
-}).listen(PORT, () => console.log(`HTTP server on port ${PORT}`))
-  .on('error', (e) => console.log(`HTTP server unavailable (${e.code}) - bot still works`));
 
 client.login(process.env.TOKEN);
