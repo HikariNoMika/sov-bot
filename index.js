@@ -579,6 +579,7 @@ client.on('messageCreate', async (message) => {
           { name: '💰 **GCash**', value:
             '`!winner add @user1 @user2 [reason]` — Record winner(s) (mods)\n' +
             '`!winner list` — Recent winners\n' +
+            '`!winner clear` — Clear all (mods)\n' +
             '`!event <name> [description]` — Post event announcement (mods)',
             inline: false },
           { name: '🎮 **Games**', value:
@@ -726,11 +727,16 @@ client.on('messageCreate', async (message) => {
 
         await message.channel.send({ embeds });
 
+      } else if (action === 'clear') {
+        saveWinners([]);
+        await message.channel.send('✅ All winners cleared.');
+
       } else {
         await message.channel.send(
           '**Winner Commands:**\n' +
           '`!winner add @user1 @user2 [reason]` — Record winner(s) (mods, attach proof)\n' +
-          '`!winner list` — Show recent winners'
+          '`!winner list` — Show recent winners\n' +
+          '`!winner clear` — Clear all winners (mods)'
         );
       }
       return;
