@@ -319,13 +319,25 @@ client.on('messageCreate', async (message) => {
     // Ensure member and roles are cached
     if (!message.member) message.member = await message.guild.members.fetch(message.author.id);
 
-    // No-chat enforcement in welcome channel
+    // No-chat enforcement in welcome and prize claim channels
     if (config.welcomeChannelId && message.channel.id === config.welcomeChannelId) {
       if (!message.content.startsWith('!')) {
         await message.delete();
         const warn = await message.channel.send(`⚠️ ${message.author}, this channel is for welcomes and commands only. No chatting.`);
         setTimeout(() => warn.delete().catch(() => {}), 5000);
         return;
+      }
+    }
+    if (config.prizeClaimChannelId && message.channel.id === config.prizeClaimChannelId) {
+      if (!message.content.startsWith('!')) {
+        const winners = loadWinners();
+        const isWinner = winners.some(w => w.userId === message.author.id);
+        if (!isWinner) {
+          await message.delete();
+          const warn = await message.channel.send(`⚠️ ${message.author}, this channel is for winners to claim prizes only. No chatting.`);
+          setTimeout(() => warn.delete().catch(() => {}), 5000);
+          return;
+        }
       }
     }
 
