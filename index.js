@@ -706,17 +706,22 @@ client.on('messageCreate', async (message) => {
           return;
         }
 
-        const list = winners.slice(-10).reverse().map((w, i) =>
-          `**${i + 1}.** ${w.userTag} — ${w.reason}`
-        ).join('\n');
+        const recent = winners.slice(-10).reverse();
+        const embeds = recent.map((w, i) => {
+          const displayTag = w.userTag ? w.userTag.split('#')[0] : 'Unknown';
+          return new EmbedBuilder()
+            .setColor(0x57F287)
+            .setTitle(`🏆 Winner`)
+            .setThumbnail(message.guild.members.cache.get(w.userId)?.user.displayAvatarURL() || null)
+            .addFields(
+              { name: 'Player', value: `<@${w.userId}>`, inline: true },
+              { name: 'Reason', value: w.reason || 'Event winner', inline: true },
+              { name: 'Recorded by', value: w.addedBy || 'Unknown', inline: true }
+            )
+            .setFooter({ text: `Winner ${i + 1} of ${recent.length}` });
+        });
 
-        const embed = new EmbedBuilder()
-          .setColor(0x57F287)
-          .setTitle('🏆 Recent Winners')
-          .setDescription(list)
-          .setFooter({ text: `${winners.length} winner(s)` });
-
-        await message.channel.send({ embeds: [embed] });
+        await message.channel.send({ embeds });
 
       } else {
         await message.channel.send(
