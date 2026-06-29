@@ -342,12 +342,12 @@ client.on('messageCreate', async (message) => {
       }
     }
 
-    // Mod-only channels (members cannot chat, only mods)
+    // Mod-only channels (no chatting, but commands and media/files allowed)
     const modOnlyChannels = Array.isArray(config.modOnlyChannels) ? config.modOnlyChannels : [];
     if (modOnlyChannels.includes(message.channel.id)) {
-      if (!message.content.startsWith('!') && !canReview(message.member)) {
+      if (!message.content.startsWith('!') && !canReview(message.member) && !message.attachments.size) {
         await message.delete();
-        const warn = await message.channel.send(`⚠️ ${message.author}, only moderators can speak here. Go to <#${config.generalChannelId}> for discussions.`);
+        const warn = await message.channel.send(`⚠️ ${message.author}, only moderators can chat here. You may post media/files. Go to <#${config.generalChannelId}> for discussions.`);
         setTimeout(() => warn.delete().catch(() => {}), 5000);
         return;
       }
