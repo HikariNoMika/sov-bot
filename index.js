@@ -660,16 +660,17 @@ client.on('messageCreate', async (message) => {
     // GCASH WINNER TRACKER
     // --------------------------------------------
     if (content.startsWith('!winner ')) {
-      if (!canReview(message.member)) {
-        await message.channel.send('❌ You need the **Sov** role or Admin permissions to use this command.');
-        return;
-      }
+      try {
+        if (!canReview(message.member)) {
+          await message.channel.send('❌ You need the **Sov** role or Admin permissions to use this command.');
+          return;
+        }
 
-      const args = content.slice(8).trim().split(/\s+/);
-      const action = args[0];
-      const user = message.mentions.members.first();
+        const args = content.slice(8).trim().split(/\s+/);
+        const action = args[0];
+        const user = message.mentions.members.first();
 
-      if (action === 'add') {
+        if (action === 'add') {
         const members = message.mentions.members;
         if (!members.size) {
           await message.channel.send('⚠️ Mention at least one user. Usage: `!winner add @user1 @user2 [reason]`');
@@ -759,6 +760,14 @@ client.on('messageCreate', async (message) => {
       }
       return;
     }
+    // Close the try block for the entire winner command
+    } catch (err) {
+      console.error('!winner command error:', err);
+    }
+    // return here would be wrong because other commands need to run, so we let the outer try/catch handle it
+    // The outer try/catch at line 337 will still catch and log any errors
+    return;
+  }
 
     // --------------------------------------------
     // EVENT ANNOUNCEMENT
