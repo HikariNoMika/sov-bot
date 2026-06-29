@@ -46,6 +46,18 @@ const client = new Client({
 const pendingReviews = new Map();
 const tttGames = new Map();
 const rpsGames = new Map();
+const WINNERS_PATH = path.join(__dirname, 'winners.json');
+
+function loadWinners() {
+  try {
+    if (fs.existsSync(WINNERS_PATH)) return JSON.parse(fs.readFileSync(WINNERS_PATH, 'utf8'));
+  } catch {}
+  return [];
+}
+
+function saveWinners(data) {
+  fs.writeFileSync(WINNERS_PATH, JSON.stringify(data, null, 2));
+}
 
 // Stores rules embed data
 const serverRules = config.serverRules || {
@@ -564,6 +576,11 @@ client.on('messageCreate', async (message) => {
             '`!badwords add <word>` — Add filter (mods)\n' +
             '`!badwords remove <word>` — Remove filter (mods)',
             inline: false },
+          { name: '💰 **GCash**', value:
+            '`!winner add @user <amount> [reason]` — Record winner (mods)\n' +
+            '`!winner list` — Recent winners\n' +
+            '`!winner total` — Total given out',
+            inline: false },
           { name: '🎮 **Games**', value:
             '`!ttt @user` — Tic Tac Toe\n' +
             '`!rps @user` — Rock Paper Scissors\n' +
@@ -633,6 +650,85 @@ client.on('messageCreate', async (message) => {
           '`!badwords list` - Show all bad words\n' +
           '`!badwords add <word>` - Add a bad word\n' +
           '`!badwords remove <word>` - Remove a bad word'
+        );
+      }
+      return;
+    }
+
+    // --------------------------------------------
+    // GCASH WINNER TRACKER
+    // --------------------------------------------
+    if (content.startsWith('!winner ')) {
+      if (!canReview(message.member)) return;
+
+      const args = content.slice(8).trim().split(/\s+/);
+      const action = args[0];
+      const user = message.mentions.members.first();
+
+      if (action === 'add' && user) {
+        const amount = args[2];
+        const reason = args.slice(3).join(' ') || 'Event winner';
+        const proof = message.attachments.first()?.url || 'No proof';
+
+        if (!amount || isNaN(amount)) {
+          await message.channel.send('⚠️ Usage: `!winner add @user <amount> [reason]`\nAttach a screenshot as proof.');
+          return;
+        }
+
+        const winners = loadWinners();
+        winners.push({
+          userId: user.id,
+          userTag: user.user.tag,
+          amount: parseFloat(amount),
+          reason,
+          proof,
+          addedBy: message.author.tag,
+          date: new Date().toISOString()
+        });
+        saveWinners(winners);
+
+        const embed = new EmbedBuilder()
+          .setColor(0x57F287)
+          .setTitle('✅ GCash Winner Recorded')
+          .setDescription(`**${user.user.tag}** won **₱${parseFloat(amount).toFixed(2)}**`)
+          .addFields(
+            { name: 'Reason', value: reason, inline: true },
+            { name: 'Recorded by', value: message.author.tag, inline: true }
+          )
+          .setTimestamp();
+
+        await message.channel.send({ embeds: [embed] });
+
+      } else if (action === 'list') {
+        const winners = loadWinners();
+        if (!winners.length) {
+          await message.channel.send('📭 No winners recorded yet.');
+          return;
+        }
+
+        const list = winners.slice(-10).reverse().map((w, i) =>
+          `**${i + 1}.** ${w.userTag} — ₱${w.amount.toFixed(2)} (${w.reason})`
+        ).join('\n');
+
+        const embed = new EmbedBuilder()
+          .setColor(0x57F287)
+          .setTitle('🏆 Recent GCash Winners')
+          .setDescription(list)
+          .setFooter({ text: `Total: ${winners.length} winner(s) — ₱${winners.reduce((s, w) => s + w.amount, 0).toFixed(2)}` });
+
+        await message.channel.send({ embeds: [embed] });
+
+      } else if (action === 'total') {
+        const winners = loadWinners();
+        const total = winners.reduce((s, w) => s + w.amount, 0);
+        await message.channel.send(`🏆 **Total GCash given out:** ₱${total.toFixed(2)} (${winners.length} winner(s))`);
+
+      } else {
+        await message.channel.send(
+          '**Winner Commands:**\n' +
+          '`!winner add @user <amount> [reason]` — Record winner (mods, attach proof)\n' +
+          '`!winner list` — Show recent winners\n' +
+          '`!winner total` — Total GCash given'
         );
       }
       return;
@@ -985,6 +1081,7 @@ client.on('messageCreate', async (message) => {
         .addFields(
           { name: '👋 **Welcome**', value: '`!welcome` (mods) · `!rules` · `!mods`' },
           { name: '🚫 **Moderation**', value: '`!ban` (mods) · `!mute` (mods) · `!unmute` (mods) · `!badwords`' },
+          { name: '💰 **GCash**', value: '`!winner add` (mods) · `!winner list` · `!winner total`' },
           { name: '🎮 **Games**', value: '`!ttt` · `!rps` · `!pogi`' },
           { name: '📊 **Community**', value: '`!poll` · `!suggest`' },
           { name: '🏰 **CoC War**', value: '`!coc status` · `!coc start war` (mods) · `!coc start cwl` (mods) · `!coc cancel` (mods) · `!coc end` (mods)' }
