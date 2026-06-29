@@ -577,9 +577,8 @@ client.on('messageCreate', async (message) => {
             '`!badwords remove <word>` — Remove filter (mods)',
             inline: false },
           { name: '💰 **GCash**', value:
-            '`!winner add @user1 @user2 [reason]` — Record ₱350 winner(s) (mods)\n' +
-            '`!winner list` — Recent winners\n' +
-            '`!winner total` — Total given out',
+            '`!winner add @user1 @user2 [reason]` — Record winner(s) (mods)\n' +
+            '`!winner list` — Recent winners',
             inline: false },
           { name: '🎮 **Games**', value:
             '`!ttt @user` — Tic Tac Toe\n' +
@@ -676,7 +675,6 @@ client.on('messageCreate', async (message) => {
         const afterLastMention = message.content.split(`<@${lastMention.id}>`).pop() || '';
         const reason = afterLastMention.trim() || 'Event winner';
         const proof = message.attachments.first()?.url || 'No proof';
-        const amount = 350;
 
         const winners = loadWinners();
         const added = [];
@@ -684,7 +682,6 @@ client.on('messageCreate', async (message) => {
           winners.push({
             userId: m.id,
             userTag: m.user.tag,
-            amount,
             reason,
             proof,
             addedBy: message.author.tag,
@@ -697,7 +694,7 @@ client.on('messageCreate', async (message) => {
         const claimChannel = config.prizeClaimChannelId ? message.guild.channels.cache.get(config.prizeClaimChannelId) : message.channel;
         const mentions = members.map(m => `<@${m.id}>`).join(' ');
         await claimChannel.send(
-          `🎉 **Prize Claim**\n${mentions}\n\nYou won **₱${amount.toFixed(2)}**! Please provide your **GCash number and full name** below.\n_Event: ${reason}_`
+          `🎉 **Prize Claim**\n${mentions}\n\nYou won the event! Please provide your **GCash number and full name** below.\n_Event: ${reason}_`
         );
 
       } else if (action === 'list') {
@@ -708,28 +705,22 @@ client.on('messageCreate', async (message) => {
         }
 
         const list = winners.slice(-10).reverse().map((w, i) =>
-          `**${i + 1}.** ${w.userTag} — ₱${w.amount.toFixed(2)} (${w.reason})`
+          `**${i + 1}.** ${w.userTag} — ${w.reason}`
         ).join('\n');
 
         const embed = new EmbedBuilder()
           .setColor(0x57F287)
-          .setTitle('🏆 Recent GCash Winners')
+          .setTitle('🏆 Recent Winners')
           .setDescription(list)
-          .setFooter({ text: `Total: ${winners.length} winner(s) — ₱${winners.reduce((s, w) => s + w.amount, 0).toFixed(2)}` });
+          .setFooter({ text: `${winners.length} winner(s)` });
 
         await message.channel.send({ embeds: [embed] });
-
-      } else if (action === 'total') {
-        const winners = loadWinners();
-        const total = winners.reduce((s, w) => s + w.amount, 0);
-        await message.channel.send(`🏆 **Total GCash given out:** ₱${total.toFixed(2)} (${winners.length} winner(s))`);
 
       } else {
         await message.channel.send(
           '**Winner Commands:**\n' +
-          '`!winner add @user1 @user2 [reason]` — Record ₱350 winner(s) (mods, attach proof)\n' +
-          '`!winner list` — Show recent winners\n' +
-          '`!winner total` — Total GCash given'
+          '`!winner add @user1 @user2 [reason]` — Record winner(s) (mods, attach proof)\n' +
+          '`!winner list` — Show recent winners'
         );
       }
       return;
@@ -1082,7 +1073,7 @@ client.on('messageCreate', async (message) => {
         .addFields(
           { name: '👋 **Welcome**', value: '`!welcome` (mods) · `!rules` · `!mods`' },
           { name: '🚫 **Moderation**', value: '`!ban` (mods) · `!mute` (mods) · `!unmute` (mods) · `!badwords`' },
-          { name: '💰 **GCash**', value: '`!winner add` (mods) · `!winner list` · `!winner total`' },
+          { name: '💰 **GCash**', value: '`!winner add` (mods) · `!winner list`' },
           { name: '🎮 **Games**', value: '`!ttt` · `!rps` · `!pogi`' },
           { name: '📊 **Community**', value: '`!poll` · `!suggest`' },
           { name: '🏰 **CoC War**', value: '`!coc status` · `!coc start war` (mods) · `!coc start cwl` (mods) · `!coc cancel` (mods) · `!coc end` (mods)' }
