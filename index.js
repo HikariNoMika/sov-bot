@@ -703,18 +703,21 @@ client.on('messageCreate', async (message) => {
           `🎉 **Prize Claim**\n${mentions}\n\nYou won the event! Please provide your **GCash number and full name** below.\n_Event: ${reason}_`
         );
 
-        // Confirmation embed in current channel
-        const confirmEmbed = new EmbedBuilder()
-          .setColor(0x57F287)
-          .setTitle('✅ Winner(s) Recorded')
-          .setDescription(`${added.join(', ')} added as winner(s)`)
-          .addFields(
-            { name: 'Event', value: reason, inline: true },
-            { name: 'Recorded by', value: message.author.tag, inline: true }
-          )
-          .setTimestamp();
+        // Individual confirmation embeds for each winner
+        for (const m of members.values()) {
+          const confirmEmbed = new EmbedBuilder()
+            .setColor(0x57F287)
+            .setTitle('✅ Winner Recorded')
+            .setDescription(`${m.user.tag} added as winner`)
+            .setThumbnail(m.user.displayAvatarURL())
+            .addFields(
+              { name: 'Event', value: reason, inline: true },
+              { name: 'Recorded by', value: message.author.tag, inline: true }
+            )
+            .setTimestamp();
 
-        await message.channel.send({ embeds: [confirmEmbed] });
+          await message.channel.send({ embeds: [confirmEmbed] });
+        }
 
       } else if (action === 'list') {
         const winners = loadWinners();
