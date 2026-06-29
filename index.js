@@ -673,7 +673,8 @@ client.on('messageCreate', async (message) => {
         }
 
         const lastMention = [...members.values()][members.size - 1];
-        const afterLastMention = message.content.split(`<@${lastMention.id}>`).pop() || '';
+        const mentionRaw = message.content.match(new RegExp(`<@!?${lastMention.id}>`))?.[0];
+        const afterLastMention = mentionRaw ? message.content.split(mentionRaw).pop() || '' : '';
         const reason = afterLastMention.trim() || 'Event winner';
         const proof = message.attachments.first()?.url || 'No proof';
 
