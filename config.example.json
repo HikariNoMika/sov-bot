@@ -1,0 +1,28 @@
+{
+  "welcomeChannelId": "",
+  "mediaChannelId": "",
+  "filesChannelId": "",
+  "cocChannelId": "",
+  "generalChannelId": "",
+  "suggestionChannelId": "",
+  "gamesChannelId": "",
+
+  "blockedAttachmentChannels": [],
+  "deleteWrongAttachments": true,
+
+  "serverRules": {
+    "title": "Server Rules",
+    "description": "Please follow these rules:",
+    "rules": [
+      "Be respectful to all members",
+      "No explicit or inappropriate content",
+      "Follow Discord Terms of Service"
+    ]
+  },
+
+  "badWords": [],
+
+  "moderatorRoleIds": [],
+
+  "modOnlyChannels": []
+}

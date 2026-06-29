@@ -4,6 +4,9 @@ node_modules/
 # Environment variables
 .env
 
+# Config (manage manually on server)
+config.json
+
 # CoC war persisted state
 coc-war-state.json
 
