@@ -694,41 +694,11 @@ client.on('messageCreate', async (message) => {
         });
         saveWinners(winners);
 
-        const total = amount * added.length;
-
-        // Notify winners in their DMs
-        for (const m of members.values()) {
-          try {
-            await m.send(
-              `🎉 **Congratulations!** You won **₱${amount.toFixed(2)}** in the server event!\n\n` +
-              `Please provide your **GCash number and full name** to claim your prize.\n\n` +
-              `_Event: ${reason}_`
-            );
-          } catch {
-            console.log(`Could not DM ${m.user.tag}`);
-          }
-        }
-
-        // Also post in configured claim channel
-        const claimChannel = config.prizeClaimChannelId ? message.guild.channels.cache.get(config.prizeClaimChannelId) : null;
-        if (claimChannel) {
-          const mentions = members.map(m => `<@${m.id}>`).join(' ');
-          await claimChannel.send(
-            `🎉 **Prize Claim**\n${mentions}\n\nYou won **₱${amount.toFixed(2)}**! Please provide your **GCash number and full name** below.\n_Event: ${reason}_`
-          );
-        }
-
-        const embed = new EmbedBuilder()
-          .setColor(0x57F287)
-          .setTitle('✅ GCash Winners Recorded')
-          .setDescription(`${added.join(', ')} won **₱${amount.toFixed(2)}** each (Total: ₱${total.toFixed(2)})`)
-          .addFields(
-            { name: 'Reason', value: reason, inline: true },
-            { name: 'Recorded by', value: message.author.tag, inline: true }
-          )
-          .setTimestamp();
-
-        await message.channel.send({ embeds: [embed] });
+        const claimChannel = config.prizeClaimChannelId ? message.guild.channels.cache.get(config.prizeClaimChannelId) : message.channel;
+        const mentions = members.map(m => `<@${m.id}>`).join(' ');
+        await claimChannel.send(
+          `🎉 **Prize Claim**\n${mentions}\n\nYou won **₱${amount.toFixed(2)}**! Please provide your **GCash number and full name** below.\n_Event: ${reason}_`
+        );
 
       } else if (action === 'list') {
         const winners = loadWinners();
