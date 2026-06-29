@@ -743,8 +743,7 @@ client.on('messageCreate', async (message) => {
         .setColor(0xFEE75C)
         .setTitle('🎉 ' + name)
         .setDescription(description || 'Get ready!')
-        .addFields({ name: 'Posted by', value: message.author.toString() })
-        .setTimestamp();
+        .addFields({ name: 'Posted by', value: message.author.toString() });
 
       const eventChannel = config.prizeClaimChannelId ? message.guild.channels.cache.get(config.prizeClaimChannelId) : message.channel;
       await eventChannel.send({ embeds: [embed] });
