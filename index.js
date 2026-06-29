@@ -665,27 +665,40 @@ client.on('messageCreate', async (message) => {
       const action = args[0];
       const user = message.mentions.members.first();
 
-      if (action === 'add' && user) {
-        const reason = args.slice(2).join(' ') || 'Event winner';
+      if (action === 'add') {
+        const members = message.mentions.members;
+        if (!members.size) {
+          await message.channel.send('⚠️ Mention at least one user. Usage: `!winner add @user1 @user2 [reason]`');
+          return;
+        }
+
+        const lastMention = [...members.values()][members.size - 1];
+        const afterLastMention = message.content.split(`<@${lastMention.id}>`).pop() || '';
+        const reason = afterLastMention.trim() || 'Event winner';
         const proof = message.attachments.first()?.url || 'No proof';
         const amount = 350;
 
         const winners = loadWinners();
-        winners.push({
-          userId: user.id,
-          userTag: user.user.tag,
-          amount,
-          reason,
-          proof,
-          addedBy: message.author.tag,
-          date: new Date().toISOString()
+        const added = [];
+        members.forEach(m => {
+          winners.push({
+            userId: m.id,
+            userTag: m.user.tag,
+            amount,
+            reason,
+            proof,
+            addedBy: message.author.tag,
+            date: new Date().toISOString()
+          });
+          added.push(m.user.tag);
         });
         saveWinners(winners);
 
+        const total = amount * added.length;
         const embed = new EmbedBuilder()
           .setColor(0x57F287)
-          .setTitle('✅ GCash Winner Recorded')
-          .setDescription(`**${user.user.tag}** won **₱${amount.toFixed(2)}**`)
+          .setTitle('✅ GCash Winners Recorded')
+          .setDescription(`${added.join(', ')} won **₱${amount.toFixed(2)}** each (Total: ₱${total.toFixed(2)})`)
           .addFields(
             { name: 'Reason', value: reason, inline: true },
             { name: 'Recorded by', value: message.author.tag, inline: true }
@@ -721,7 +734,7 @@ client.on('messageCreate', async (message) => {
       } else {
         await message.channel.send(
           '**Winner Commands:**\n' +
-          '`!winner add @user [reason]` — Record ₱350 winner (mods, attach proof)\n' +
+          '`!winner add @user1 @user2 [reason]` — Record ₱350 winner(s) (mods, attach proof)\n' +
           '`!winner list` — Show recent winners\n' +
           '`!winner total` — Total GCash given'
         );
