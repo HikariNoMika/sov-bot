@@ -252,11 +252,13 @@ function buildWelcomeLanding(member) {
     .setTitle(`🎉 Welcome to ${member.guild.name}!`)
     .setDescription(
       `Hello ${member}, welcome!\n\n` +
-      `We're glad to have you here. Use the buttons below to get started.`
+      `We're glad to have you here. Use the buttons below to get started.\n\n` +
+      `⚠️ **No chatting in this channel** — it's only for welcomes and commands.`
     )
     .addFields({
       name: '📌 Quick Tips',
       value:
+        '• Click **👋 Welcome** to greet the new member\n' +
         '• Click **📜 Rules** to see the server rules\n' +
         '• Click **📁 Channels** to see channel guides\n' +
         '• Click **🆘 Help** if you need assistance'
@@ -265,6 +267,10 @@ function buildWelcomeLanding(member) {
     .setTimestamp();
 
   const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`welcome_say_${member.id}`)
+      .setLabel('👋 Welcome')
+      .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
       .setCustomId('welcome_rules')
       .setLabel('📜 Rules')
@@ -312,6 +318,16 @@ client.on('messageCreate', async (message) => {
 
     // Ensure member and roles are cached
     if (!message.member) message.member = await message.guild.members.fetch(message.author.id);
+
+    // No-chat enforcement in welcome channel
+    if (config.welcomeChannelId && message.channel.id === config.welcomeChannelId) {
+      if (!message.content.startsWith('!')) {
+        await message.delete();
+        const warn = await message.channel.send(`⚠️ ${message.author}, this channel is for welcomes and commands only. No chatting.`);
+        setTimeout(() => warn.delete().catch(() => {}), 5000);
+        return;
+      }
+    }
 
     const content = message.content.toLowerCase();
 
@@ -1164,6 +1180,15 @@ client.on('interactionCreate', async (interaction) => {
     // --------------------------------------------
     // PUBLIC BUTTONS (no mod check)
     // --------------------------------------------
+    if (interaction.customId.startsWith('welcome_say_')) {
+      const newMemberId = interaction.customId.split('_')[2];
+      await interaction.reply({
+        content: `👋 ${interaction.user} warmly welcomed <@${newMemberId}>!`,
+        allowedMentions: { users: [] }
+      });
+      return;
+    }
+
     if (interaction.customId === 'welcome_rules') {
       const rulesList = serverRules.rules.map((r, i) => `\`${i + 1}.\` ${r}`).join('\n');
       const embed = new EmbedBuilder()
