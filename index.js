@@ -342,6 +342,17 @@ client.on('messageCreate', async (message) => {
       }
     }
 
+    // Mod-only channels (members cannot chat, only mods)
+    const modOnlyChannels = Array.isArray(config.modOnlyChannels) ? config.modOnlyChannels : [];
+    if (modOnlyChannels.includes(message.channel.id)) {
+      if (!message.content.startsWith('!') && !canReview(message.member)) {
+        await message.delete();
+        const warn = await message.channel.send(`⚠️ ${message.author}, only moderators can speak here. Go to <#${config.generalChannelId}> for discussions.`);
+        setTimeout(() => warn.delete().catch(() => {}), 5000);
+        return;
+      }
+    }
+
     const content = message.content.toLowerCase();
 
     // --------------------------------------------

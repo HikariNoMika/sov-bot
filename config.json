@@ -34,7 +34,8 @@
     "dangkal"
   ],
 
-  "moderatorRoleIds": ["1519333608169668759","1519639235588522025"]
+  "moderatorRoleIds": ["1519333608169668759","1519639235588522025"],
 
+  "modOnlyChannels": []
 
 }
