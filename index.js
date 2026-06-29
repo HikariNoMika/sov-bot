@@ -578,7 +578,8 @@ client.on('messageCreate', async (message) => {
             inline: false },
           { name: '💰 **GCash**', value:
             '`!winner add @user1 @user2 [reason]` — Record winner(s) (mods)\n' +
-            '`!winner list` — Recent winners',
+            '`!winner list` — Recent winners\n' +
+            '`!event <name> [description]` — Post event announcement (mods)',
             inline: false },
           { name: '🎮 **Games**', value:
             '`!ttt @user` — Tic Tac Toe\n' +
@@ -722,6 +723,32 @@ client.on('messageCreate', async (message) => {
           '`!winner add @user1 @user2 [reason]` — Record winner(s) (mods, attach proof)\n' +
           '`!winner list` — Show recent winners'
         );
+      }
+      return;
+    }
+
+    // --------------------------------------------
+    // EVENT ANNOUNCEMENT
+    // --------------------------------------------
+    if (content.startsWith('!event ')) {
+      if (!canReview(message.member)) return;
+
+      const text = content.slice(7).trim();
+      const parts = text.split(/ (.+)/);
+      const name = parts[0];
+      const description = parts[1] || '';
+
+      const embed = new EmbedBuilder()
+        .setColor(0xFEE75C)
+        .setTitle('🎉 ' + name)
+        .setDescription(description || 'Get ready!')
+        .addFields({ name: 'Posted by', value: message.author.toString() })
+        .setTimestamp();
+
+      const eventChannel = config.prizeClaimChannelId ? message.guild.channels.cache.get(config.prizeClaimChannelId) : message.channel;
+      await eventChannel.send({ embeds: [embed] });
+      if (eventChannel.id !== message.channel.id) {
+        await message.channel.send('✅ Event posted in <#' + eventChannel.id + '>');
       }
       return;
     }
@@ -1073,7 +1100,7 @@ client.on('messageCreate', async (message) => {
         .addFields(
           { name: '👋 **Welcome**', value: '`!welcome` (mods) · `!rules` · `!mods`' },
           { name: '🚫 **Moderation**', value: '`!ban` (mods) · `!mute` (mods) · `!unmute` (mods) · `!badwords`' },
-          { name: '💰 **GCash**', value: '`!winner add` (mods) · `!winner list`' },
+          { name: '💰 **GCash**', value: '`!winner add` (mods) · `!winner list` · `!event` (mods)' },
           { name: '🎮 **Games**', value: '`!ttt` · `!rps` · `!pogi`' },
           { name: '📊 **Community**', value: '`!poll` · `!suggest`' },
           { name: '🏰 **CoC War**', value: '`!coc status` · `!coc start war` (mods) · `!coc start cwl` (mods) · `!coc cancel` (mods) · `!coc end` (mods)' }
