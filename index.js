@@ -59,17 +59,7 @@ function saveWinners(data) {
   fs.writeFileSync(WINNERS_PATH, JSON.stringify(data, null, 2));
 }
 
-// Stores rules embed data
-const serverRules = config.serverRules || {
-  title: 'Server Rules',
-  description: 'Follow the rules to keep the server safe and fun for everyone.',
-  rules: [
-    'Be respectful to everyone',
-    'No explicit or inappropriate content',
-    'Follow Discord ToS',
-    'Use channels for their intended purpose'
-  ]
-};
+const serverRules = config.serverRules;
 
 // ----------------------------------------------------
 // CoC WAR TIMER SYSTEM
@@ -113,7 +103,7 @@ function cocLoadState() {
       console.log(`🔄 Resumed ${cocWar.type} war (${cocWar.phase} phase)`);
     }
   } catch (e) {
-    console.log('No saved war state to resume.');
+    console.log('Could not load saved war state:', e.message);
   }
 }
 
@@ -133,7 +123,7 @@ cocLoadState();
 function cocSend(guild, content) {
   const channels = [config.cocChannelId, config.generalChannelId].filter(Boolean);
   if (!channels.length) return console.log('cocSend: no channels configured');
-  for (const id of [...new Set(channels)]) {
+  for (const id of new Set(channels)) {
     const ch = guild.channels.cache.get(id);
     if (ch) {
       ch.send(content).catch(e => console.log('cocSend error to', id, ':', e.message));
@@ -262,8 +252,7 @@ function canReview(member) {
 
   // 3) Allowed moderator roles from config.json
   if (
-    Array.isArray(config.moderatorRoleIds) &&
-    config.moderatorRoleIds.length > 0
+    Array.isArray(config.moderatorRoleIds)
   ) {
     return config.moderatorRoleIds.some(roleId => member.roles.cache.has(roleId));
   }
@@ -617,12 +606,14 @@ client.on('messageCreate', async (message) => {
       const word = parts.slice(1).join(' ').toLowerCase();
 
       if (action === 'list') {
-        const words = config.badWords.map((w, i) => `\`${i + 1}.\` ||${w}||`).join('\n') || 'None';
+        const words = config.badWords.length
+          ? config.badWords.map((w, i) => `\`${i + 1}.\` ||${w}||`).join('\n')
+          : 'None';
         const embed = new EmbedBuilder()
           .setColor(0xED4245)
           .setAuthor({ name: 'Auto-Moderation' })
           .setTitle('🚫 Filtered Words')
-          .setDescription(words || 'No words configured')
+          .setDescription(words)
           .setFooter({ text: `${config.badWords.length} word(s) filtered` });
         await message.channel.send({ embeds: [embed] });
 
@@ -667,7 +658,6 @@ client.on('messageCreate', async (message) => {
 
       const args = content.slice(8).trim().split(/\s+/);
       const action = args[0];
-      const user = message.mentions.members.first();
 
       if (action === 'add') {
         const members = message.mentions.members;
@@ -706,7 +696,7 @@ client.on('messageCreate', async (message) => {
         // Individual confirmation embeds for each winner
         for (const m of members.values()) {
           try {
-            const avatar = m.user.displayAvatarURL() || null;
+            const avatar = m.user.displayAvatarURL();
             const confirmEmbed = new EmbedBuilder()
               .setColor(0x57F287)
               .setTitle('✅ Winner Recorded')
@@ -1314,15 +1304,14 @@ client.on('interactionCreate', async (interaction) => {
       const draw = !winner && game.board.every(c => c !== null);
       const over = !!(winner || draw);
 
-      const xLabel = winner === 'x' ? '❌ X' : '❌';
-      const oLabel = winner === 'o' ? '⭕ O' : '⭕';
-
       let desc;
       if (winner) {
+        const xLabel = '❌ X';
+        const oLabel = '⭕ O';
         const winnerName = game.names[winner];
         desc = `**${winnerName} (${winner.toUpperCase()}) wins!** 🎉\n\n${game.names.x} ${xLabel} vs ${game.names.o} ${oLabel}`;
       } else if (draw) {
-        desc = `It's a draw! 🤝\n\n${game.names.x} ${xLabel} vs ${game.names.o} ${oLabel}`;
+        desc = `It's a draw! 🤝\n\n${game.names.x} ❌ vs ${game.names.o} ⭕`;
       } else {
         game.turn = game.turn === 'x' ? 'o' : 'x';
         desc = `Turn: <@${game.players[game.turn]}>`;
