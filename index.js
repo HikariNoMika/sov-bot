@@ -821,20 +821,27 @@ client.on('messageCreate', async (message) => {
           return;
         }
 
-        let prepHours = 23;
+        let prepMs = 23 * HOUR;
         if (args[2]) {
-          const match = args[2].match(/^(\d+)(h|m|d)$/);
-          if (match) {
-            if (match[2] === 'h') prepHours = parseInt(match[1]);
-            else if (match[2] === 'm') prepHours = parseInt(match[1]) / 60;
-            else if (match[2] === 'd') prepHours = parseInt(match[1]) * 24;
+          const timeMatch = args[2].match(/^(\d{1,2}):(\d{2})$/);
+          if (timeMatch) {
+            const target = new Date();
+            target.setHours(parseInt(timeMatch[1]), parseInt(timeMatch[2]), 0, 0);
+            if (target <= new Date()) target.setDate(target.getDate() + 1);
+            prepMs = target.getTime() - Date.now();
           } else {
-            await message.channel.send('⚠️ Invalid format. Use e.g. `!coc start war 23h`, `!coc start war 90m`');
-            return;
+            const durMatch = args[2].match(/^(\d+)(h|m|d)$/);
+            if (durMatch) {
+              let hours = parseInt(durMatch[1]);
+              if (durMatch[2] === 'm') hours /= 60;
+              else if (durMatch[2] === 'd') hours *= 24;
+              prepMs = hours * HOUR;
+            } else {
+              await message.channel.send('⚠️ Invalid format. Use e.g. `!coc start war 23h`, `!coc start war 90m`, `!coc start war 21:15`');
+              return;
+            }
           }
         }
-
-        const prepMs = prepHours * HOUR;
         const now = Date.now();
         cocWar.type = 'normal';
         cocWar.phase = 'preparation';
@@ -930,6 +937,7 @@ client.on('messageCreate', async (message) => {
           '`!coc commands` - Show this list (everyone)\n' +
           '`!coc start war [time]` - Start normal war (mods only)\n' +
           '`!coc start war 23h` - With custom prep time\n' +
+          '`!coc start war 21:15` - Battle starts at 9:15 PM\n' +
           '`!coc start cwl` - Start CWL (mods only)\n' +
           '`!coc cancel` - Cancel current war (mods only)\n' +
           '`!coc end` - Mark war as ended (mods only)'
