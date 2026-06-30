@@ -133,6 +133,17 @@ function cocScheduleNotifications(guild) {
       cocSend(guild, `⚔️ **Battle Day has started!** Attack now to secure victory for the clan!`);
     }, t(prepDelay)));
 
+    // Prep-phase countdown
+    const prepRemaining = (label, msBefore) => {
+      cocWar.timers.push(setTimeout(() => {
+        cocSend(guild, `📅 **${label} of preparation remaining!** Get your war bases ready!`);
+      }, t(cocWar.prepEndsAt - Date.now() - msBefore)));
+    };
+    prepRemaining('6 hours', 6 * HOUR);
+    prepRemaining('1 hour', HOUR);
+    prepRemaining('30 minutes', 30 * 60 * 1000);
+    prepRemaining('10 minutes', 10 * 60 * 1000);
+
     // 6h remaining
     cocWar.timers.push(setTimeout(() => {
       cocSend(guild, `⏰ **6 hours remaining!** Get your attacks in before time runs out!`);
@@ -170,6 +181,17 @@ function cocScheduleNotifications(guild) {
       cocWar.phase = 'battle';
       cocSend(guild, `⚔️ **CWL Round 1 has started!** Attack and earn stars for the clan!`);
     }, t(prepDelay)));
+
+    // CWL prep-phase countdown
+    const prepRemainingCwl = (label, msBefore) => {
+      cocWar.timers.push(setTimeout(() => {
+        cocSend(guild, `📅 **${label} of preparation remaining!** Get your war bases ready!`);
+      }, t(cocWar.prepEndsAt - Date.now() - msBefore)));
+    };
+    prepRemainingCwl('6 hours', 6 * HOUR);
+    prepRemainingCwl('1 hour', HOUR);
+    prepRemainingCwl('30 minutes', 30 * 60 * 1000);
+    prepRemainingCwl('10 minutes', 10 * 60 * 1000);
 
     for (let round = 2; round <= 7; round++) {
       const roundStart = cocWar.prepEndsAt + (round - 1) * roundDuration;
