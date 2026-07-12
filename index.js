@@ -58,6 +58,9 @@ const cocWar = {
   prepEndsAt: null,
   battleEndsAt: null,
   guildId: null,
+  currentRound: 1,
+  roundOverrides: {},
+  roundStartTimes: [],
   timers: []
 };
 
@@ -68,7 +71,10 @@ function cocSaveState() {
     startedAt: cocWar.startedAt,
     prepEndsAt: cocWar.prepEndsAt,
     battleEndsAt: cocWar.battleEndsAt,
-    guildId: cocWar.guildId
+    guildId: cocWar.guildId,
+    currentRound: cocWar.currentRound,
+    roundOverrides: cocWar.roundOverrides,
+    roundStartTimes: cocWar.roundStartTimes
   };
   fs.writeFileSync(COC_STATE_PATH, JSON.stringify(data));
 }
@@ -83,6 +89,7 @@ function cocLoadState() {
         return;
       }
       Object.assign(cocWar, data);
+      if (cocWar.type === 'cwl' && !cocWar.roundStartTimes.length) cocCalcRoundStartTimes();
       console.log(`🔄 Resumed ${cocWar.type} war (${cocWar.phase} phase)`);
     }
   } catch (e) {
@@ -97,6 +104,9 @@ function cocClearState() {
   cocWar.prepEndsAt = null;
   cocWar.battleEndsAt = null;
   cocWar.guildId = null;
+  cocWar.currentRound = 1;
+  cocWar.roundOverrides = {};
+  cocWar.roundStartTimes = [];
   try { fs.unlinkSync(COC_STATE_PATH); } catch {}
 }
 
@@ -171,14 +181,17 @@ function cocScheduleNotifications(guild) {
     }, t(cocWar.battleEndsAt - Date.now())));
 
   } else if (cocWar.type === 'cwl') {
-    const roundDuration = 24 * HOUR;
+    const roundDuration = DAY;
+    if (!cocWar.roundStartTimes.length) cocCalcRoundStartTimes();
 
     const prepDelay = cocWar.prepEndsAt - Date.now();
     if (prepDelay <= 0 && cocWar.phase === 'preparation') {
       cocWar.phase = 'battle';
+      cocWar.currentRound = 1;
     }
     cocWar.timers.push(setTimeout(() => {
       cocWar.phase = 'battle';
+      cocWar.currentRound = 1;
       cocSend(guild, `⚔️ **CWL Round 1 has started!** Attack and earn stars for the clan!`);
     }, t(prepDelay)));
 
@@ -194,14 +207,19 @@ function cocScheduleNotifications(guild) {
     prepRemainingCwl('10 minutes', 10 * 60 * 1000);
 
     for (let round = 2; round <= 7; round++) {
-      const roundStart = cocWar.prepEndsAt + (round - 1) * roundDuration;
-      cocWar.timers.push(setTimeout(() => {
-        cocSend(guild, `⚔️ **CWL Round ${round} has started!** Get your attacks in!`);
-      }, t(roundStart - Date.now())));
+      const roundStart = cocWar.roundStartTimes[round];
+      const roundDelay = roundStart - Date.now();
+      if (roundDelay > 0) {
+        cocWar.timers.push(setTimeout(() => {
+          cocWar.currentRound = round;
+          cocSaveState();
+          cocSend(guild, `⚔️ **CWL Round ${round} has started!** Get your attacks in!`);
+        }, t(roundDelay)));
 
-      cocWar.timers.push(setTimeout(() => {
-        cocSend(guild, `⏰ **CWL Round ${round} - 6 hours left!** Don't forget to attack!`);
-      }, t(roundStart + 18 * HOUR - Date.now())));
+        cocWar.timers.push(setTimeout(() => {
+          cocSend(guild, `⏰ **CWL Round ${round} - 6 hours left!** Don't forget to attack!`);
+        }, t(roundStart + 18 * HOUR - Date.now())));
+      }
     }
 
     cocWar.timers.push(setTimeout(() => {
@@ -221,6 +239,30 @@ function cocFormatTime(ms) {
   if (hours > 0) str += `${hours}h `;
   if (minutes > 0) str += `${minutes}m`;
   return str.trim();
+}
+
+function cocCalcRoundStartTimes() {
+  const rd = DAY;
+  cocWar.roundStartTimes = [null];
+  cocWar.roundStartTimes[1] = cocWar.prepEndsAt;
+  for (let r = 2; r <= 7; r++) {
+    if (cocWar.roundOverrides && cocWar.roundOverrides[r]) {
+      cocWar.roundStartTimes[r] = cocWar.roundOverrides[r];
+    } else {
+      cocWar.roundStartTimes[r] = cocWar.roundStartTimes[r - 1] + rd;
+    }
+  }
+  cocWar.battleEndsAt = cocWar.roundStartTimes[7] + rd;
+  cocSaveState();
+}
+
+function cocCurrentRound() {
+  const now = Date.now();
+  if (cocWar.phase === 'preparation') return 0;
+  for (let r = 7; r >= 1; r--) {
+    if (now >= cocWar.roundStartTimes[r]) return r;
+  }
+  return 1;
 }
 
 client.once('ready', () => {
@@ -629,6 +671,8 @@ client.on('messageCreate', async (message) => {
             '`!coc status` — Current war timer\n' +
             '`!coc start war [time]` — Start normal war (mods)\n' +
             '`!coc start cwl` — Start CWL season (mods)\n' +
+            '`!cwl day<N> HH:MM` — Override CWL round start (mods)\n' +
+            '`!cwl status` — Show CWL round schedule\n' +
             '`!coc cancel` — Stop war timer (mods)\n' +
             '`!coc end` — Mark war ended (mods)\n' +
             '`!coc commands` — CoC help',
@@ -884,9 +928,11 @@ client.on('messageCreate', async (message) => {
         const now = Date.now();
         cocWar.type = 'cwl';
         cocWar.phase = 'preparation';
+        cocWar.currentRound = 0;
         cocWar.startedAt = now;
         cocWar.prepEndsAt = now + DAY;
-        cocWar.battleEndsAt = now + DAY + 7 * DAY;
+        cocWar.roundOverrides = {};
+        cocCalcRoundStartTimes();
         cocWar.guildId = message.guild.id;
         cocSaveState();
 
@@ -917,9 +963,25 @@ client.on('messageCreate', async (message) => {
             { name: '⏳ Time Remaining', value: cocFormatTime(remaining), inline: true },
             { name: '📅 Prep ends', value: `<t:${Math.floor(cocWar.prepEndsAt / 1000)}:R>`, inline: true },
             { name: '⚔️ Battle ends', value: `<t:${Math.floor(cocWar.battleEndsAt / 1000)}:R>`, inline: true }
-          )
-          .setFooter({ text: `Started` })
-          .setTimestamp(cocWar.startedAt);
+          );
+
+        if (cocWar.type === 'cwl') {
+          const round = cocCurrentRound();
+          embed.addFields({ name: '🔄 Current Round', value: round === 0 ? 'Prep' : `Round ${round}`, inline: true });
+          if (cocWar.roundStartTimes.length) {
+            let schedule = '';
+            for (let r = 1; r <= 7; r++) {
+              const start = cocWar.roundStartTimes[r];
+              const marker = r === round ? '**▶' : '';
+              const end = r === round ? '◀**' : '';
+              const label = cocWar.roundOverrides[r] ? `~R${r}` : `R${r}`;
+              schedule += `${marker}${label}: <t:${Math.floor(start / 1000)}:t>${end}\n`;
+            }
+            embed.addFields({ name: '📋 Round Schedule', value: schedule.trim(), inline: false });
+          }
+        }
+
+        embed.setFooter({ text: `Started` }).setTimestamp(cocWar.startedAt);
 
         await message.channel.send({ embeds: [embed] });
 
@@ -957,10 +1019,89 @@ client.on('messageCreate', async (message) => {
           '`!coc start war [time]` - Start normal war (mods only)\n' +
           '`!coc start war 23:30` - With custom prep time (23h 30m)\n' +
           '`!coc start cwl` - Start CWL (mods only)\n' +
+          '`!cwl day<N> HH:MM` - Override CWL round time (mods)\n' +
+          '`!cwl status` - Show CWL round schedule\n' +
           '`!coc cancel` - Cancel current war (mods only)\n' +
           '`!coc end` - Mark war as ended (mods only)'
         );
       }
+      return;
+    }
+
+    // --------------------------------------------
+    // CWL ROUND OVERRIDES
+    // --------------------------------------------
+    if (content.startsWith('!cwl ') && canReview(message.member)) {
+      const args = content.slice(5).trim().split(/\s+/);
+
+      if (args[0] === 'status') {
+        if (cocWar.type !== 'cwl') {
+          await message.channel.send('📭 No ongoing CWL season. Start one with `!coc start cwl`.');
+          return;
+        }
+        const now = Date.now();
+        const round = cocCurrentRound();
+        const lines = [];
+        for (let r = 1; r <= 7; r++) {
+          const start = cocWar.roundStartTimes[r];
+          const marker = r === round ? '▶ ' : '  ';
+          const overridden = cocWar.roundOverrides[r] ? ' (overridden)' : '';
+          const status = now >= start ? '✅' : '⏳';
+          lines.push(`${marker}Round ${r}: ${status} <t:${Math.floor(start / 1000)}:t>${overridden}`);
+        }
+        await message.channel.send(`**📋 CWL Round Schedule**\n${lines.join('\n')}`);
+        return;
+      }
+
+      const dayMatch = args[0] && args[0].match(/^day(\d)$/i);
+      if (dayMatch) {
+        const round = parseInt(dayMatch[1]);
+        if (round < 1 || round > 7) {
+          await message.channel.send('⚠️ Round must be 1-7.');
+          return;
+        }
+
+        if (!args[1]) {
+          await message.channel.send('⚠️ Specify time, e.g. `!cwl day2 22:58`.');
+          return;
+        }
+
+        const timeMatch = args[1].match(/^(\d{1,2}):(\d{2})$/);
+        if (!timeMatch) {
+          await message.channel.send('⚠️ Invalid time. Use `HH:MM` format, e.g. `!cwl day2 22:58`.');
+          return;
+        }
+
+        if (cocWar.type !== 'cwl') {
+          await message.channel.send('📭 No ongoing CWL season. Start one with `!coc start cwl`.');
+          return;
+        }
+
+        if (round <= cocCurrentRound()) {
+          await message.channel.send(`⚠️ Round ${round} has already started or ended. Cannot override.`);
+          return;
+        }
+
+        const target = new Date();
+        target.setHours(parseInt(timeMatch[1]), parseInt(timeMatch[2]), 0, 0);
+        if (target <= new Date()) target.setDate(target.getDate() + 1);
+
+        // Check it doesn't overlap with previous round
+        const prevEnd = cocWar.roundStartTimes[round - 1] + DAY;
+        if (target.getTime() < prevEnd) {
+          await message.channel.send(`⚠️ Round ${round} cannot start before previous round ends (${new Date(prevEnd).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}).`);
+          return;
+        }
+
+        cocWar.roundOverrides[round] = target.getTime();
+        cocCalcRoundStartTimes();
+        cocScheduleNotifications(message.guild);
+
+        await message.channel.send(`✅ **Round ${round}** overridden to start at **${args[1]}**.`);
+        return;
+      }
+
+      await message.channel.send('Usage: `!cwl day<N> HH:MM` or `!cwl status`');
       return;
     }
 
@@ -1179,7 +1320,7 @@ client.on('messageCreate', async (message) => {
           { name: '💰 **GCash**', value: '`!winner add` (mods) · `!winner list` · `!event` (mods)' },
           { name: '🎮 **Games**', value: '`!ttt` · `!rps` · `!pogi`' },
           { name: '📊 **Community**', value: '`!poll` · `!suggest`' },
-          { name: '🏰 **CoC War**', value: '`!coc status` · `!coc start war` (mods) · `!coc start cwl` (mods) · `!coc cancel` (mods) · `!coc end` (mods)' }
+          { name: '🏰 **CoC War**', value: '`!coc status` · `!coc start war` (mods) · `!coc start cwl` (mods) · `!cwl day<N> HH:MM` (mods) · `!coc cancel` (mods) · `!coc end` (mods)' }
         )
         .setFooter({ text: 'Use !commands for full details' });
 
