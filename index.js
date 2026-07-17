@@ -439,17 +439,9 @@ client.on('messageCreate', async (message) => {
     // Ensure member and roles are cached
     if (!message.member) message.member = await message.guild.members.fetch(message.author.id);
 
-    // Auto-delete messages in configured channels after 1 minute
+    // Auto-delete messages in configured channels after 5 minutes
     if (Array.isArray(config.autoDeleteChannelIds) && config.autoDeleteChannelIds.includes(message.channel.id)) {
-      console.log(`Auto-delete set for message ${message.id} in ${message.channel.id}`);
-      setTimeout(async () => {
-        try {
-          await message.delete();
-          console.log(`Auto-deleted message ${message.id}`);
-        } catch (e) {
-          console.log(`Auto-delete failed for ${message.id}: ${e.message}`);
-        }
-      }, 60 * 1000);
+      setTimeout(() => message.delete().catch(() => {}), 5 * 60 * 1000);
     }
 
     // No-chat enforcement in welcome and prize claim channels
@@ -535,6 +527,27 @@ client.on('messageCreate', async (message) => {
       } catch (e) {
         await message.channel.send('❌ Failed to set permissions. Make sure the bot has "Manage Permissions" permission.');
         console.log('Invite error:', e.message);
+      }
+      return;
+    }
+
+    if (content.startsWith('!clear ')) {
+      if (!canReview(message.member)) {
+        await message.channel.send('❌ You need the **Sov** role or Admin permissions to use this command.');
+        return;
+      }
+      const num = parseInt(content.split(' ')[1]);
+      if (!num || num < 1 || num > 100) {
+        await message.channel.send('⚠️ Usage: `!clear <1-100>` — deletes that many messages.');
+        return;
+      }
+      try {
+        const messages = await message.channel.bulkDelete(Math.min(num + 1, 100), true);
+        const count = messages.size - 1;
+        const msg = await message.channel.send(`🗑️ Deleted **${count}** messages.`);
+        setTimeout(() => msg.delete().catch(() => {}), 3000);
+      } catch (e) {
+        await message.channel.send('❌ Failed to delete messages. Messages may be older than 14 days or I lack permissions.');
       }
       return;
     }
@@ -751,6 +764,7 @@ client.on('messageCreate', async (message) => {
             '`!ban @user [reason]` — Ban member (mods)\n' +
             '`!mute @user <time> [reason]` — Timeout member (mods)\n' +
             '`!unmute @user` — Remove timeout (mods)\n' +
+            '`!clear <1-100>` — Bulk delete messages (mods)\n' +
             '`!badwords list` — View filtered words\n' +
             '`!badwords add <word>` — Add filter (mods)\n' +
             '`!badwords remove <word>` — Remove filter (mods)',
@@ -1421,7 +1435,7 @@ client.on('messageCreate', async (message) => {
         .setDescription(`\`${message.content.split(' ')[0]}\` is not a recognized command.`)
         .addFields(
           { name: '👋 **Welcome**', value: '`!welcome` (mods) · `!invite @user` · `!rules` · `!mods`' },
-          { name: '🚫 **Moderation**', value: '`!ban` (mods) · `!mute` (mods) · `!unmute` (mods) · `!badwords`' },
+          { name: '🚫 **Moderation**', value: '`!ban` (mods) · `!mute` (mods) · `!unmute` (mods) · `!clear` (mods) · `!badwords`' },
           { name: '💰 **GCash**', value: '`!winner add` (mods) · `!winner list` · `!event` (mods)' },
           { name: '🎮 **Games**', value: '`!ttt` · `!rps` · `!pogi`' },
           { name: '📊 **Community**', value: '`!poll` · `!suggest`' },
