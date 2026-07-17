@@ -1277,6 +1277,7 @@ client.on('messageCreate', async (message) => {
 
       return;
     }
+    }
 
     // --------------------------------------------
     // FUN: POGI (random member)
