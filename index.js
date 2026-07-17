@@ -439,6 +439,11 @@ client.on('messageCreate', async (message) => {
     // Ensure member and roles are cached
     if (!message.member) message.member = await message.guild.members.fetch(message.author.id);
 
+    // Auto-delete messages in configured channels after 5 minutes
+    if (Array.isArray(config.autoDeleteChannelIds) && config.autoDeleteChannelIds.includes(message.channel.id)) {
+      setTimeout(() => message.delete().catch(() => {}), 5 * 60 * 1000);
+    }
+
     // No-chat enforcement in welcome and prize claim channels
     if (config.welcomeChannelId && message.channel.id === config.welcomeChannelId) {
       if (!message.content.startsWith('!')) {
