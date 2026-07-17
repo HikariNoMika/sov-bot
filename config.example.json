@@ -6,6 +6,11 @@
   "generalChannelId": "",
   "suggestionChannelId": "",
   "gamesChannelId": "",
+  "prizeClaimChannelId": "",
+  "approvalChannelId": "",
+
+  "guestRoleId": "",
+  "memberRoleId": "",
 
   "blockedAttachmentChannels": [],
   "deleteWrongAttachments": true,
@@ -22,6 +27,7 @@
 
   "badWords": [],
 
+  "moderatorUserIds": [],
   "moderatorRoleIds": [],
 
   "modOnlyChannels": []

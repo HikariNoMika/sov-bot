@@ -357,18 +357,47 @@ function buildWelcomeLanding(member) {
 // ----------------------------------------------------
 client.on('guildMemberAdd', async (member) => {
   try {
-    const channel = member.guild.channels.cache.get(config.welcomeChannelId);
-    if (!channel) {
-      console.log('❌ Welcome channel not found.');
+    if (member.user.bot) return;
+
+    const approvalChannel = member.guild.channels.cache.get(config.approvalChannelId);
+    if (!approvalChannel) {
+      console.log('❌ Approval channel not found.');
       return;
     }
 
-    await channel.send({
-      content: `${member}`,
-      ...buildWelcomeLanding(member)
-    });
+    // Assign restricted role
+    if (config.guestRoleId) {
+      const role = member.guild.roles.cache.get(config.guestRoleId);
+      if (role) await member.roles.add(role).catch(e => console.log('Role assign error:', e.message));
+    }
+
+    const embed = new EmbedBuilder()
+      .setColor(0xFEE75C)
+      .setAuthor({ name: member.user.tag, iconURL: member.user.displayAvatarURL() })
+      .setTitle('📥 New Member')
+      .setDescription(`<@${member.id}> joined the server.`)
+      .addFields(
+        { name: 'Account Created', value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`, inline: true },
+        { name: 'Joined', value: `<t:${Math.floor(Date.now() / 1000)}:R>`, inline: true }
+      )
+      .setTimestamp();
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`approve_${member.id}`)
+        .setLabel('Approve')
+        .setStyle(ButtonStyle.Success)
+        .setEmoji('✅'),
+      new ButtonBuilder()
+        .setCustomId(`deny_${member.id}`)
+        .setLabel('Deny')
+        .setStyle(ButtonStyle.Danger)
+        .setEmoji('❌')
+    );
+
+    await approvalChannel.send({ embeds: [embed], components: [row] });
   } catch (err) {
-    console.error('Welcome error:', err);
+    console.error('Member approval error:', err);
   }
 });
 
@@ -1420,6 +1449,56 @@ client.on('interactionCreate', async (interaction) => {
         );
 
       return interaction.reply({ embeds: [embed], flags: 64 });
+    }
+
+    // --------------------------------------------
+    // MEMBER APPROVAL BUTTONS
+    // --------------------------------------------
+    if (interaction.customId.startsWith('approve_') || interaction.customId.startsWith('deny_')) {
+      if (!canReview(interaction.member)) {
+        return interaction.reply({ content: '❌ Only moderators can approve or deny members.', flags: 64 });
+      }
+
+      const targetId = interaction.customId.split('_')[1];
+      const target = interaction.guild.members.cache.get(targetId);
+      if (!target) {
+        return interaction.reply({ content: '⚠️ That member is no longer in the server.', flags: 64 });
+      }
+
+      const isApprove = interaction.customId.startsWith('approve_');
+
+      const disabledRow = new ActionRowBuilder().addComponents(
+        interaction.message.components[0].components.map(b =>
+          ButtonBuilder.from(b).setDisabled(true)
+        )
+      );
+
+      if (isApprove) {
+        if (config.guestRoleId) {
+          const guestRole = interaction.guild.roles.cache.get(config.guestRoleId);
+          if (guestRole && target.roles.cache.has(config.guestRoleId)) {
+            await target.roles.remove(guestRole).catch(e => console.log('Role remove error:', e.message));
+          }
+        }
+        if (config.memberRoleId) {
+          const memberRole = interaction.guild.roles.cache.get(config.memberRoleId);
+          if (memberRole) await target.roles.add(memberRole).catch(e => console.log('Role add error:', e.message));
+        }
+
+        await interaction.update({
+          embeds: [EmbedBuilder.from(interaction.message.embeds[0]).setColor(0x57F287).setTitle('✅ Approved')],
+          components: [disabledRow]
+        });
+        await interaction.followUp({ content: `✅ <@${targetId}> has been approved.`, flags: 64 });
+      } else {
+        await target.kick('Denied by moderator').catch(e => console.log('Kick error:', e.message));
+        await interaction.update({
+          embeds: [EmbedBuilder.from(interaction.message.embeds[0]).setColor(0xED4245).setTitle('❌ Denied')],
+          components: [disabledRow]
+        });
+        await interaction.followUp({ content: `❌ <@${targetId}> has been denied and removed.`, flags: 64 });
+      }
+      return;
     }
 
     // --------------------------------------------
