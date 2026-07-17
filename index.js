@@ -1400,7 +1400,7 @@ client.on('messageCreate', async (message) => {
     if (!hasAttachments) return;
 
     const isBlockedChannel = config.blockedAttachmentChannels.includes(message.channel.id);
-    if (!isBlockedChannel) return;
+    if (isUnfiltered || !isBlockedChannel) return;
 
     const mediaChannel = `<#${config.mediaChannelId}>`;
     const filesChannel = `<#${config.filesChannelId}>`;
