@@ -480,6 +480,9 @@ client.on('messageCreate', async (message) => {
 
     const content = message.content.toLowerCase();
 
+    // Unfiltered channels — skip content moderation (bad words, attachments)
+    const isUnfiltered = Array.isArray(config.unfilteredChannelIds) && config.unfilteredChannelIds.includes(message.channel.id);
+
     // --------------------------------------------
     // 0) COMMANDS
     // --------------------------------------------
@@ -1169,6 +1172,7 @@ client.on('messageCreate', async (message) => {
     // --------------------------------------------
     // 1) BAD WORD REVIEW (OPTION A: SAME CHANNEL)
     // --------------------------------------------
+    if (!isUnfiltered) {
     const foundBadWord = config.badWords.some(word =>
       content.includes(word.toLowerCase())
     );

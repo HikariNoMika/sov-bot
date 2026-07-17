@@ -32,5 +32,6 @@
 
   "modOnlyChannels": [],
 
-  "autoDeleteChannelIds": []
+  "autoDeleteChannelIds": [],
+  "unfilteredChannelIds": []
 }
