@@ -439,9 +439,17 @@ client.on('messageCreate', async (message) => {
     // Ensure member and roles are cached
     if (!message.member) message.member = await message.guild.members.fetch(message.author.id);
 
-    // Auto-delete messages in configured channels after 5 minutes
+    // Auto-delete messages in configured channels after 1 minute
     if (Array.isArray(config.autoDeleteChannelIds) && config.autoDeleteChannelIds.includes(message.channel.id)) {
-      setTimeout(() => message.delete().catch(() => {}), 60 * 1000);
+      console.log(`Auto-delete set for message ${message.id} in ${message.channel.id}`);
+      setTimeout(async () => {
+        try {
+          await message.delete();
+          console.log(`Auto-deleted message ${message.id}`);
+        } catch (e) {
+          console.log(`Auto-delete failed for ${message.id}: ${e.message}`);
+        }
+      }, 60 * 1000);
     }
 
     // No-chat enforcement in welcome and prize claim channels
