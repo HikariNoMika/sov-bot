@@ -501,6 +501,36 @@ client.on('messageCreate', async (message) => {
       return;
     }
 
+    if (content.startsWith('!invite ')) {
+      const target = message.mentions.members.first();
+      if (!target) {
+        await message.channel.send('⚠️ Mention a member to invite. Usage: `!invite @user`');
+        return;
+      }
+
+      // Grant temporary access to this channel
+      try {
+        await message.channel.permissionOverwrites.edit(target.id, { ViewChannel: true });
+        await message.channel.send(`✅ <@${target.id}> has been granted temporary access to this channel for **30 minutes**.`);
+
+        setTimeout(async () => {
+          try {
+            // Only remove if no other active invite exists for the same user+channel
+            const overwrites = message.channel.permissionOverwrites.cache.get(target.id);
+            if (overwrites && overwrites.allow.has(PermissionsBitField.Flags.ViewChannel)) {
+              await message.channel.permissionOverwrites.delete(target.id);
+            }
+          } catch (e) {
+            // Channel or overwrite might be gone
+          }
+        }, 30 * 60 * 1000);
+      } catch (e) {
+        await message.channel.send('❌ Failed to set permissions. Make sure the bot has "Manage Permissions" permission.');
+        console.log('Invite error:', e.message);
+      }
+      return;
+    }
+
     if (content === '!rules') {
       const rulesList = serverRules.rules.map((r, i) => `\`${i + 1}.\` ${r}`).join('\n');
       const embed = new EmbedBuilder()
@@ -705,6 +735,7 @@ client.on('messageCreate', async (message) => {
         .addFields(
           { name: '👋 **Welcome**', value:
             '`!welcome` — Preview landing page (mods)\n' +
+            '`!invite` — Temp invite a member to this channel (30m)\n' +
             '`!rules` — Display server rules\n' +
             '`!mods` — List moderators',
             inline: false },
@@ -1380,7 +1411,7 @@ client.on('messageCreate', async (message) => {
         .setTitle('❓ Unknown Command')
         .setDescription(`\`${message.content.split(' ')[0]}\` is not a recognized command.`)
         .addFields(
-          { name: '👋 **Welcome**', value: '`!welcome` (mods) · `!rules` · `!mods`' },
+          { name: '👋 **Welcome**', value: '`!welcome` (mods) · `!invite @user` · `!rules` · `!mods`' },
           { name: '🚫 **Moderation**', value: '`!ban` (mods) · `!mute` (mods) · `!unmute` (mods) · `!badwords`' },
           { name: '💰 **GCash**', value: '`!winner add` (mods) · `!winner list` · `!event` (mods)' },
           { name: '🎮 **Games**', value: '`!ttt` · `!rps` · `!pogi`' },
