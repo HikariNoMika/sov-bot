@@ -401,6 +401,33 @@ client.on('guildMemberAdd', async (member) => {
   }
 });
 
+client.on('guildMemberRemove', async (member) => {
+  try {
+    if (member.user.bot) return;
+
+    const approvalChannel = member.guild.channels.cache.get(config.approvalChannelId);
+    if (!approvalChannel) {
+      console.log('❌ Approval channel not found for leave notification.');
+      return;
+    }
+
+    const embed = new EmbedBuilder()
+      .setColor(0xED4245)
+      .setAuthor({ name: member.user.tag, iconURL: member.user.displayAvatarURL() })
+      .setTitle('🚪 Member Left')
+      .setDescription(`<@${member.id}> left the server.`)
+      .addFields(
+        { name: 'Joined', value: member.joinedAt ? `<t:${Math.floor(member.joinedAt / 1000)}:R>` : 'Unknown', inline: true },
+        { name: 'Account Created', value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`, inline: true }
+      )
+      .setTimestamp();
+
+    await approvalChannel.send({ embeds: [embed] });
+  } catch (err) {
+    console.error('Member leave notification error:', err);
+  }
+});
+
 // ----------------------------------------------------
 // MESSAGE MODERATION
 // ----------------------------------------------------
