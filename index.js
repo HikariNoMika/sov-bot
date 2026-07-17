@@ -1512,6 +1512,15 @@ client.on('interactionCreate', async (interaction) => {
           if (memberRole) await target.roles.add(memberRole).catch(e => console.log('Role add error:', e.message));
         }
 
+        // Send welcome landing to welcome channel
+        const welcomeChannel = interaction.guild.channels.cache.get(config.welcomeChannelId);
+        if (welcomeChannel) {
+          await welcomeChannel.send({
+            content: `${target}`,
+            ...buildWelcomeLanding(target)
+          }).catch(e => console.log('Welcome landing send error:', e.message));
+        }
+
         await interaction.update({
           embeds: [EmbedBuilder.from(interaction.message.embeds[0]).setColor(0x57F287).setTitle('✅ Approved')],
           components: [disabledRow]
