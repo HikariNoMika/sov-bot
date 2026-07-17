@@ -441,7 +441,7 @@ client.on('messageCreate', async (message) => {
 
     // Auto-delete messages in configured channels after 5 minutes
     if (Array.isArray(config.autoDeleteChannelIds) && config.autoDeleteChannelIds.includes(message.channel.id)) {
-      setTimeout(() => message.delete().catch(() => {}), 5 * 60 * 1000);
+      setTimeout(() => message.delete().catch(() => {}), 60 * 1000);
     }
 
     // No-chat enforcement in welcome and prize claim channels
