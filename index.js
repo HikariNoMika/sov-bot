@@ -113,6 +113,213 @@ function cocClearState() {
 // Load state on startup
 cocLoadState();
 
+// ----------------------------------------------------
+// EXTENSION CLAN WAR TIMER SYSTEM
+// ----------------------------------------------------
+const EXT_STATE_PATH = path.join(__dirname, 'ext-war-state.json');
+
+const extWar = {
+  type: null,
+  phase: null,
+  startedAt: null,
+  prepEndsAt: null,
+  battleEndsAt: null,
+  guildId: null,
+  currentRound: 1,
+  roundOverrides: {},
+  roundStartTimes: [],
+  timers: []
+};
+
+function extSaveState() {
+  const data = {
+    type: extWar.type,
+    phase: extWar.phase,
+    startedAt: extWar.startedAt,
+    prepEndsAt: extWar.prepEndsAt,
+    battleEndsAt: extWar.battleEndsAt,
+    guildId: extWar.guildId,
+    currentRound: extWar.currentRound,
+    roundOverrides: extWar.roundOverrides,
+    roundStartTimes: extWar.roundStartTimes
+  };
+  fs.writeFileSync(EXT_STATE_PATH, JSON.stringify(data));
+}
+
+function extLoadState() {
+  try {
+    if (fs.existsSync(EXT_STATE_PATH)) {
+      const data = JSON.parse(fs.readFileSync(EXT_STATE_PATH, 'utf8'));
+      if (data.phase === 'ended' || data.phase === null) return;
+      if (Date.now() >= data.battleEndsAt) {
+        extClearState();
+        return;
+      }
+      Object.assign(extWar, data);
+      if (extWar.type === 'cwl' && !extWar.roundStartTimes.length) extCalcRoundStartTimes();
+      console.log(`🔄 Resumed extension ${extWar.type} war (${extWar.phase} phase)`);
+    }
+  } catch (e) {
+    console.log('Could not load saved extension war state:', e.message);
+  }
+}
+
+function extClearState() {
+  extWar.type = null;
+  extWar.phase = null;
+  extWar.startedAt = null;
+  extWar.prepEndsAt = null;
+  extWar.battleEndsAt = null;
+  extWar.guildId = null;
+  extWar.currentRound = 1;
+  extWar.roundOverrides = {};
+  extWar.roundStartTimes = [];
+  try { fs.unlinkSync(EXT_STATE_PATH); } catch {}
+}
+
+// Load extension state on startup
+extLoadState();
+
+function extSend(guild, content) {
+  const channels = [config.cocChannelId, config.generalChannelId].filter(Boolean);
+  if (!channels.length) return console.log('extSend: no channels configured');
+  for (const id of new Set(channels)) {
+    const ch = guild.channels.cache.get(id);
+    if (ch) {
+      ch.send(content).catch(e => console.log('extSend error to', id, ':', e.message));
+    } else {
+      console.log('extSend: channel not found in cache:', id);
+    }
+  }
+}
+
+function extScheduleNotifications(guild) {
+  extWar.timers.forEach(clearTimeout);
+  extWar.timers = [];
+
+  const t = (ms) => Math.max(0, ms);
+
+  if (extWar.type === 'normal') {
+    // Battle starts (after prep)
+    const prepDelay = extWar.prepEndsAt - Date.now();
+    if (prepDelay <= 0) {
+      extWar.phase = 'battle';
+    }
+    extWar.timers.push(setTimeout(() => {
+      extWar.phase = 'battle';
+      extSend(guild, `⚔️ **Extension Clan: Battle Day has started!** Attack now to secure victory!`);
+    }, t(prepDelay)));
+
+    // Prep-phase countdown
+    const prepRemaining = (label, msBefore) => {
+      extWar.timers.push(setTimeout(() => {
+        extSend(guild, `📅 **Extension Clan: ${label} of preparation remaining!** Get your war bases ready!`);
+      }, t(extWar.prepEndsAt - Date.now() - msBefore)));
+    };
+    prepRemaining('6 hours', 6 * HOUR);
+    prepRemaining('1 hour', HOUR);
+    prepRemaining('30 minutes', 30 * 60 * 1000);
+    prepRemaining('10 minutes', 10 * 60 * 1000);
+
+    // 6h remaining
+    extWar.timers.push(setTimeout(() => {
+      extSend(guild, `⏰ **Extension Clan: 6 hours remaining!** Get your attacks in before time runs out!`);
+    }, t(extWar.battleEndsAt - Date.now() - 6 * HOUR)));
+
+    // 1h remaining
+    extWar.timers.push(setTimeout(() => {
+      extSend(guild, `🔥 **Extension Clan: 1 hour left!** Final chance to use your attacks!`);
+    }, t(extWar.battleEndsAt - Date.now() - HOUR)));
+
+    // 30m remaining
+    extWar.timers.push(setTimeout(() => {
+      extSend(guild, `⏳ **Extension Clan: 30 minutes left!** Hurry and use your remaining attacks!`);
+    }, t(extWar.battleEndsAt - Date.now() - 30 * 60 * 1000)));
+
+    // 10m remaining
+    extWar.timers.push(setTimeout(() => {
+      extSend(guild, `🔴 **Extension Clan: 10 minutes left!** Attack now, the war is almost over!`);
+    }, t(extWar.battleEndsAt - Date.now() - 10 * 60 * 1000)));
+
+    // War over
+    extWar.timers.push(setTimeout(() => {
+      extClearState();
+      extSend(guild, `🏁 **Extension Clan: The war has ended!** Great effort!`);
+    }, t(extWar.battleEndsAt - Date.now())));
+
+  } else if (extWar.type === 'cwl') {
+    const roundDuration = DAY;
+    if (!extWar.roundStartTimes.length) extCalcRoundStartTimes();
+
+    const prepDelay = extWar.prepEndsAt - Date.now();
+    if (prepDelay <= 0 && extWar.phase === 'preparation') {
+      extWar.phase = 'battle';
+      extWar.currentRound = 1;
+    }
+    extWar.timers.push(setTimeout(() => {
+      extWar.phase = 'battle';
+      extWar.currentRound = 1;
+      extSend(guild, `⚔️ **Extension Clan CWL Round 1 has started!** Attack and earn stars!`);
+    }, t(prepDelay)));
+
+    // CWL prep-phase countdown
+    const prepRemainingCwl = (label, msBefore) => {
+      extWar.timers.push(setTimeout(() => {
+        extSend(guild, `📅 **Extension Clan: ${label} of preparation remaining!** Get your war bases ready!`);
+      }, t(extWar.prepEndsAt - Date.now() - msBefore)));
+    };
+    prepRemainingCwl('6 hours', 6 * HOUR);
+    prepRemainingCwl('1 hour', HOUR);
+    prepRemainingCwl('30 minutes', 30 * 60 * 1000);
+    prepRemainingCwl('10 minutes', 10 * 60 * 1000);
+
+    for (let round = 2; round <= 7; round++) {
+      const roundStart = extWar.roundStartTimes[round];
+      const roundDelay = roundStart - Date.now();
+      if (roundDelay > 0) {
+        extWar.timers.push(setTimeout(() => {
+          extWar.currentRound = round;
+          extSaveState();
+          extSend(guild, `⚔️ **Extension Clan CWL Round ${round} has started!** Get your attacks in!`);
+        }, t(roundDelay)));
+
+        extWar.timers.push(setTimeout(() => {
+          extSend(guild, `⏰ **Extension Clan CWL Round ${round} - 6 hours left!** Don't forget to attack!`);
+        }, t(roundStart + 18 * HOUR - Date.now())));
+      }
+    }
+
+    extWar.timers.push(setTimeout(() => {
+      extClearState();
+      extSend(guild, `🏁 **Extension Clan CWL has ended!** Well fought! 🎉`);
+    }, t(extWar.battleEndsAt - Date.now())));
+  }
+}
+
+function extCalcRoundStartTimes() {
+  const rd = DAY;
+  extWar.roundStartTimes = [null];
+  extWar.roundStartTimes[1] = extWar.prepEndsAt;
+  for (let r = 2; r <= 7; r++) {
+    if (extWar.roundOverrides && extWar.roundOverrides[r]) {
+      extWar.roundStartTimes[r] = extWar.roundOverrides[r];
+    } else {
+      extWar.roundStartTimes[r] = extWar.roundStartTimes[r - 1] + rd;
+    }
+  }
+  extWar.battleEndsAt = extWar.roundStartTimes[7] + rd;
+  extSaveState();
+}
+
+function extCurrentRound() {
+  const now = Date.now();
+  if (extWar.phase === 'preparation') return 0;
+  for (let r = 7; r >= 1; r--) {
+    if (now >= extWar.roundStartTimes[r]) return r;
+  }
+  return 1;
+}
+
 function cocSend(guild, content) {
   const channels = [config.cocChannelId, config.generalChannelId].filter(Boolean);
   if (!channels.length) return console.log('cocSend: no channels configured');
@@ -274,6 +481,15 @@ client.once('ready', () => {
     if (guild) {
       console.log(`🔄 Resuming ${cocWar.type} war notifications...`);
       cocScheduleNotifications(guild);
+    }
+  }
+
+  // Resume Extension Clan war if saved state exists
+  if (extWar.phase && extWar.phase !== 'ended' && extWar.guildId) {
+    const guild = client.guilds.cache.get(extWar.guildId);
+    if (guild) {
+      console.log(`🔄 Resuming extension ${extWar.type} war notifications...`);
+      extScheduleNotifications(guild);
     }
   }
 });
@@ -1219,6 +1435,242 @@ client.on('messageCreate', async (message) => {
       }
 
       await message.channel.send('Usage: `!cwl day<N> HH:MM` or `!cwl status`');
+      return;
+    }
+
+    // --------------------------------------------
+    // EXTENSION CLAN WAR COMMANDS
+    // --------------------------------------------
+    if (content.startsWith('!ext ')) {
+      const args = content.slice(5).trim().split(/\s+/);
+
+      // Only status/help/commands is public; everything else requires moderator
+      if (!['status', 'help', 'commands'].includes(args[0]) && !canReview(message.member)) {
+        await message.channel.send('❌ You need the **Sov** role or Admin permissions to use this command.');
+        return;
+      }
+
+      if (args[0] === 'start' && args[1] === 'war') {
+        if (extWar.phase && extWar.phase !== 'ended') {
+          await message.channel.send('⚠️ An extension clan war is already ongoing! Use `!ext cancel` first.');
+          return;
+        }
+
+        let prepMs = 23 * HOUR;
+        if (args[2]) {
+          const timeMatch = args[2].match(/^(\d{1,2}):(\d{2})$/);
+          if (timeMatch) {
+            prepMs = parseInt(timeMatch[1]) * HOUR + parseInt(timeMatch[2]) * 60000;
+          } else {
+            const durMatch = args[2].match(/^(\d+)(h|m|d)$/);
+            if (durMatch) {
+              let hours = parseInt(durMatch[1]);
+              if (durMatch[2] === 'm') hours /= 60;
+              else if (durMatch[2] === 'd') hours *= 24;
+              prepMs = hours * HOUR;
+            } else {
+              await message.channel.send('⚠️ Invalid format. Use e.g. `!ext start war 23h`, `!ext start war 90m`, `!ext start war 23:30`');
+              return;
+            }
+          }
+        }
+        const now = Date.now();
+        extWar.type = 'normal';
+        extWar.phase = 'preparation';
+        extWar.startedAt = now;
+        extWar.prepEndsAt = now + prepMs;
+        extWar.battleEndsAt = now + prepMs + DAY;
+        extWar.guildId = message.guild.id;
+        extSaveState();
+
+        extScheduleNotifications(message.guild);
+
+        await message.channel.send(`⚔️ **Extension Clan: Normal War started!**\n📅 Preparation: ${cocFormatTime(prepMs)}\n⚔️ Battle: 24h\nTotal: ${cocFormatTime(prepMs + DAY)}`);
+        extSend(message.guild, `🏰 **Extension Clan War has started!** Preparation phase is active. Get your bases ready!`);
+
+      } else if (args[0] === 'start' && args[1] === 'cwl') {
+        if (extWar.phase && extWar.phase !== 'ended') {
+          await message.channel.send('⚠️ An extension clan war is already ongoing! Use `!ext cancel` first.');
+          return;
+        }
+
+        const now = Date.now();
+        extWar.type = 'cwl';
+        extWar.phase = 'preparation';
+        extWar.currentRound = 0;
+        extWar.startedAt = now;
+        extWar.prepEndsAt = now + DAY;
+        extWar.roundOverrides = {};
+        extCalcRoundStartTimes();
+        extWar.guildId = message.guild.id;
+        extSaveState();
+
+        extScheduleNotifications(message.guild);
+
+        await message.channel.send(`⚔️ **Extension Clan CWL started!**\n📅 Preparation: 24h\n⚔️ 7 Battle Rounds\nTotal: 8 days`);
+        extSend(message.guild, `🏆 **Extension Clan War League has started!** Prepare for 7 rounds of battles!`);
+
+      } else if (args[0] === 'status') {
+        if (!extWar.phase || extWar.phase === 'ended') {
+          await message.channel.send('📭 No ongoing extension clan war.');
+          return;
+        }
+
+        const now = Date.now();
+        const phaseEmoji = extWar.phase === 'preparation' ? '📅' : '⚔️';
+        const phaseName = extWar.phase === 'preparation' ? 'Preparation' : 'Battle';
+        const remaining = extWar.phase === 'preparation'
+          ? extWar.prepEndsAt - now
+          : extWar.battleEndsAt - now;
+
+        const embed = new EmbedBuilder()
+          .setColor(extWar.type === 'cwl' ? 0xFFD700 : 0x57F287)
+          .setAuthor({ name: 'Clash of Clans' })
+          .setTitle(`🏰 Extension Clan ${extWar.type.toUpperCase()} War`)
+          .addFields(
+            { name: `${phaseEmoji} Phase`, value: phaseName, inline: true },
+            { name: '⏳ Time Remaining', value: cocFormatTime(remaining), inline: true },
+            { name: '📅 Prep ends', value: `<t:${Math.floor(extWar.prepEndsAt / 1000)}:R>`, inline: true },
+            { name: '⚔️ Battle ends', value: `<t:${Math.floor(extWar.battleEndsAt / 1000)}:R>`, inline: true }
+          );
+
+        if (extWar.type === 'cwl') {
+          const round = extCurrentRound();
+          embed.addFields({ name: '🔄 Current Round', value: round === 0 ? 'Prep' : `Round ${round}`, inline: true });
+          if (extWar.roundStartTimes.length) {
+            let schedule = '';
+            for (let r = 1; r <= 7; r++) {
+              const start = extWar.roundStartTimes[r];
+              const marker = r === round ? '**▶' : '';
+              const end = r === round ? '◀**' : '';
+              const label = extWar.roundOverrides[r] ? `~R${r}` : `R${r}`;
+              schedule += `${marker}${label}: <t:${Math.floor(start / 1000)}:t>${end}\n`;
+            }
+            embed.addFields({ name: '📋 Round Schedule', value: schedule.trim(), inline: false });
+          }
+        }
+
+        embed.setFooter({ text: `Started` }).setTimestamp(extWar.startedAt);
+
+        await message.channel.send({ embeds: [embed] });
+
+      } else if (args[0] === 'cancel') {
+        if (!extWar.phase || extWar.phase === 'ended') {
+          await message.channel.send('📭 No ongoing extension clan war to cancel.');
+          return;
+        }
+
+        extWar.timers.forEach(clearTimeout);
+        extWar.timers = [];
+        extClearState();
+
+        await message.channel.send('❌ Extension clan war cancelled.');
+        extSend(message.guild, `❌ **The extension clan war has been cancelled.**`);
+
+      } else if (args[0] === 'end') {
+        if (!extWar.phase || extWar.phase === 'ended') {
+          await message.channel.send('📭 No ongoing extension clan war to end.');
+          return;
+        }
+
+        extWar.timers.forEach(clearTimeout);
+        extWar.timers = [];
+        extClearState();
+
+        await message.channel.send('🏁 Extension clan war ended manually.');
+        extSend(message.guild, `🏁 **The extension clan war has ended!** Great effort!`);
+
+      } else {
+        await message.channel.send(
+          '**Extension Clan CoC Commands:**\n' +
+          '`!ext status` - Check war status (everyone)\n' +
+          '`!ext commands` - Show this list (everyone)\n' +
+          '`!ext start war [time]` - Start normal war (mods only)\n' +
+          '`!ext start war 23:30` - With custom prep time (23h 30m)\n' +
+          '`!ext start cwl` - Start CWL (mods only)\n' +
+          '`!ext cwl day<N> HH:MM` - Override CWL round time (mods)\n' +
+          '`!ext cwl status` - Show CWL round schedule\n' +
+          '`!ext cancel` - Cancel current war (mods only)\n' +
+          '`!ext end` - Mark war as ended (mods only)'
+        );
+      }
+      return;
+    }
+
+    // --------------------------------------------
+    // EXTENSION CWL ROUND OVERRIDES
+    // --------------------------------------------
+    if (content.startsWith('!ext cwl ') && canReview(message.member)) {
+      const args = content.slice(9).trim().split(/\s+/);
+
+      if (args[0] === 'status') {
+        if (extWar.type !== 'cwl') {
+          await message.channel.send('📭 No ongoing extension CWL season. Start one with `!ext start cwl`.');
+          return;
+        }
+        const now = Date.now();
+        const round = extCurrentRound();
+        const lines = [];
+        for (let r = 1; r <= 7; r++) {
+          const start = extWar.roundStartTimes[r];
+          const marker = r === round ? '▶ ' : '  ';
+          const overridden = extWar.roundOverrides[r] ? ' (overridden)' : '';
+          const status = now >= start ? '✅' : '⏳';
+          lines.push(`${marker}Round ${r}: ${status} <t:${Math.floor(start / 1000)}:t>${overridden}`);
+        }
+        await message.channel.send(`**📋 Extension Clan CWL Round Schedule**\n${lines.join('\n')}`);
+        return;
+      }
+
+      const dayMatch = args[0] && args[0].match(/^day(\d)$/i);
+      if (dayMatch) {
+        const round = parseInt(dayMatch[1]);
+        if (round < 1 || round > 7) {
+          await message.channel.send('⚠️ Round must be 1-7.');
+          return;
+        }
+
+        if (!args[1]) {
+          await message.channel.send('⚠️ Specify time, e.g. `!ext cwl day2 22:58`.');
+          return;
+        }
+
+        const timeMatch = args[1].match(/^(\d{1,2}):(\d{2})$/);
+        if (!timeMatch) {
+          await message.channel.send('⚠️ Invalid time. Use `HH:MM` format, e.g. `!ext cwl day2 22:58`.');
+          return;
+        }
+
+        if (extWar.type !== 'cwl') {
+          await message.channel.send('📭 No ongoing extension CWL season. Start one with `!ext start cwl`.');
+          return;
+        }
+
+        if (round <= extCurrentRound()) {
+          await message.channel.send(`⚠️ Round ${round} has already started or ended. Cannot override.`);
+          return;
+        }
+
+        const target = new Date();
+        target.setHours(parseInt(timeMatch[1]), parseInt(timeMatch[2]), 0, 0);
+        if (target <= new Date()) target.setDate(target.getDate() + 1);
+
+        // Check it doesn't overlap with previous round
+        const prevEnd = extWar.roundStartTimes[round - 1] + DAY;
+        if (target.getTime() < prevEnd) {
+          await message.channel.send(`⚠️ Round ${round} cannot start before previous round ends (${new Date(prevEnd).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}).`);
+          return;
+        }
+
+        extWar.roundOverrides[round] = target.getTime();
+        extCalcRoundStartTimes();
+        extScheduleNotifications(message.guild);
+
+        await message.channel.send(`✅ **Round ${round}** overridden to start at **${args[1]}**.`);
+        return;
+      }
+
+      await message.channel.send('Usage: `!ext cwl day<N> HH:MM` or `!ext cwl status`');
       return;
     }
 
