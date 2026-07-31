@@ -43,6 +43,8 @@ function saveWinners(data) {
 }
 
 const serverRules = config.serverRules;
+const CLAN_NAME = config.clanName || 'Main Clan';
+const EXT_CLAN_NAME = config.extClanName || 'Extension Clan';
 
 // ----------------------------------------------------
 // CoC WAR TIMER SYSTEM
@@ -207,13 +209,13 @@ function extScheduleNotifications(guild) {
     }
     extWar.timers.push(setTimeout(() => {
       extWar.phase = 'battle';
-      extSend(guild, `⚔️ **Extension Clan: Battle Day has started!** Attack now to secure victory!`);
+      extSend(guild, `⚔️ **${EXT_CLAN_NAME}: Battle Day has started!** Attack now to secure victory!`);
     }, t(prepDelay)));
 
     // Prep-phase countdown
     const prepRemaining = (label, msBefore) => {
       extWar.timers.push(setTimeout(() => {
-        extSend(guild, `📅 **Extension Clan: ${label} of preparation remaining!** Get your war bases ready!`);
+        extSend(guild, `📅 **${EXT_CLAN_NAME}: ${label} of preparation remaining!** Get your war bases ready!`);
       }, t(extWar.prepEndsAt - Date.now() - msBefore)));
     };
     prepRemaining('6 hours', 6 * HOUR);
@@ -223,28 +225,28 @@ function extScheduleNotifications(guild) {
 
     // 6h remaining
     extWar.timers.push(setTimeout(() => {
-      extSend(guild, `⏰ **Extension Clan: 6 hours remaining!** Get your attacks in before time runs out!`);
+      extSend(guild, `⏰ **${EXT_CLAN_NAME}: 6 hours remaining!** Get your attacks in before time runs out!`);
     }, t(extWar.battleEndsAt - Date.now() - 6 * HOUR)));
 
     // 1h remaining
     extWar.timers.push(setTimeout(() => {
-      extSend(guild, `🔥 **Extension Clan: 1 hour left!** Final chance to use your attacks!`);
+      extSend(guild, `🔥 **${EXT_CLAN_NAME}: 1 hour left!** Final chance to use your attacks!`);
     }, t(extWar.battleEndsAt - Date.now() - HOUR)));
 
     // 30m remaining
     extWar.timers.push(setTimeout(() => {
-      extSend(guild, `⏳ **Extension Clan: 30 minutes left!** Hurry and use your remaining attacks!`);
+      extSend(guild, `⏳ **${EXT_CLAN_NAME}: 30 minutes left!** Hurry and use your remaining attacks!`);
     }, t(extWar.battleEndsAt - Date.now() - 30 * 60 * 1000)));
 
     // 10m remaining
     extWar.timers.push(setTimeout(() => {
-      extSend(guild, `🔴 **Extension Clan: 10 minutes left!** Attack now, the war is almost over!`);
+      extSend(guild, `🔴 **${EXT_CLAN_NAME}: 10 minutes left!** Attack now, the war is almost over!`);
     }, t(extWar.battleEndsAt - Date.now() - 10 * 60 * 1000)));
 
     // War over
     extWar.timers.push(setTimeout(() => {
       extClearState();
-      extSend(guild, `🏁 **Extension Clan: The war has ended!** Great effort!`);
+      extSend(guild, `🏁 **${EXT_CLAN_NAME}: The war has ended!** Great effort!`);
     }, t(extWar.battleEndsAt - Date.now())));
 
   } else if (extWar.type === 'cwl') {
@@ -259,13 +261,13 @@ function extScheduleNotifications(guild) {
     extWar.timers.push(setTimeout(() => {
       extWar.phase = 'battle';
       extWar.currentRound = 1;
-      extSend(guild, `⚔️ **Extension Clan CWL Round 1 has started!** Attack and earn stars!`);
+      extSend(guild, `⚔️ **${EXT_CLAN_NAME}: CWL Round 1 has started!** Attack and earn stars!`);
     }, t(prepDelay)));
 
     // CWL prep-phase countdown
     const prepRemainingCwl = (label, msBefore) => {
       extWar.timers.push(setTimeout(() => {
-        extSend(guild, `📅 **Extension Clan: ${label} of preparation remaining!** Get your war bases ready!`);
+        extSend(guild, `📅 **${EXT_CLAN_NAME}: ${label} of preparation remaining!** Get your war bases ready!`);
       }, t(extWar.prepEndsAt - Date.now() - msBefore)));
     };
     prepRemainingCwl('6 hours', 6 * HOUR);
@@ -280,18 +282,18 @@ function extScheduleNotifications(guild) {
         extWar.timers.push(setTimeout(() => {
           extWar.currentRound = round;
           extSaveState();
-          extSend(guild, `⚔️ **Extension Clan CWL Round ${round} has started!** Get your attacks in!`);
+          extSend(guild, `⚔️ **${EXT_CLAN_NAME}: CWL Round ${round} has started!** Get your attacks in!`);
         }, t(roundDelay)));
 
         extWar.timers.push(setTimeout(() => {
-          extSend(guild, `⏰ **Extension Clan CWL Round ${round} - 6 hours left!** Don't forget to attack!`);
+          extSend(guild, `⏰ **${EXT_CLAN_NAME}: CWL Round ${round} - 6 hours left!** Don't forget to attack!`);
         }, t(roundStart + 18 * HOUR - Date.now())));
       }
     }
 
     extWar.timers.push(setTimeout(() => {
       extClearState();
-      extSend(guild, `🏁 **Extension Clan CWL has ended!** Well fought! 🎉`);
+      extSend(guild, `🏁 **${EXT_CLAN_NAME}: CWL has ended!** Well fought! 🎉`);
     }, t(extWar.battleEndsAt - Date.now())));
   }
 }
@@ -347,13 +349,13 @@ function cocScheduleNotifications(guild) {
     }
     cocWar.timers.push(setTimeout(() => {
       cocWar.phase = 'battle';
-      cocSend(guild, `⚔️ **Battle Day has started!** Attack now to secure victory for the clan!`);
+      cocSend(guild, `⚔️ **${CLAN_NAME}: Battle Day has started!** Attack now to secure victory for the clan!`);
     }, t(prepDelay)));
 
     // Prep-phase countdown
     const prepRemaining = (label, msBefore) => {
       cocWar.timers.push(setTimeout(() => {
-        cocSend(guild, `📅 **${label} of preparation remaining!** Get your war bases ready!`);
+        cocSend(guild, `📅 **${CLAN_NAME}: ${label} of preparation remaining!** Get your war bases ready!`);
       }, t(cocWar.prepEndsAt - Date.now() - msBefore)));
     };
     prepRemaining('6 hours', 6 * HOUR);
@@ -363,28 +365,28 @@ function cocScheduleNotifications(guild) {
 
     // 6h remaining
     cocWar.timers.push(setTimeout(() => {
-      cocSend(guild, `⏰ **6 hours remaining!** Get your attacks in before time runs out!`);
+      cocSend(guild, `⏰ **${CLAN_NAME}: 6 hours remaining!** Get your attacks in before time runs out!`);
     }, t(cocWar.battleEndsAt - Date.now() - 6 * HOUR)));
 
     // 1h remaining
     cocWar.timers.push(setTimeout(() => {
-      cocSend(guild, `🔥 **1 hour left!** Final chance to use your attacks!`);
+      cocSend(guild, `🔥 **${CLAN_NAME}: 1 hour left!** Final chance to use your attacks!`);
     }, t(cocWar.battleEndsAt - Date.now() - HOUR)));
 
     // 30m remaining
     cocWar.timers.push(setTimeout(() => {
-      cocSend(guild, `⏳ **30 minutes left!** Hurry and use your remaining attacks!`);
+      cocSend(guild, `⏳ **${CLAN_NAME}: 30 minutes left!** Hurry and use your remaining attacks!`);
     }, t(cocWar.battleEndsAt - Date.now() - 30 * 60 * 1000)));
 
     // 10m remaining
     cocWar.timers.push(setTimeout(() => {
-      cocSend(guild, `🔴 **10 minutes left!** Attack now, the war is almost over!`);
+      cocSend(guild, `🔴 **${CLAN_NAME}: 10 minutes left!** Attack now, the war is almost over!`);
     }, t(cocWar.battleEndsAt - Date.now() - 10 * 60 * 1000)));
 
     // War over
     cocWar.timers.push(setTimeout(() => {
       cocClearState();
-      cocSend(guild, `🏁 **The war has ended!** Great effort, clan!`);
+      cocSend(guild, `🏁 **${CLAN_NAME}: The war has ended!** Great effort, clan!`);
     }, t(cocWar.battleEndsAt - Date.now())));
 
   } else if (cocWar.type === 'cwl') {
@@ -399,13 +401,13 @@ function cocScheduleNotifications(guild) {
     cocWar.timers.push(setTimeout(() => {
       cocWar.phase = 'battle';
       cocWar.currentRound = 1;
-      cocSend(guild, `⚔️ **CWL Round 1 has started!** Attack and earn stars for the clan!`);
+      cocSend(guild, `⚔️ **${CLAN_NAME}: CWL Round 1 has started!** Attack and earn stars for the clan!`);
     }, t(prepDelay)));
 
     // CWL prep-phase countdown
     const prepRemainingCwl = (label, msBefore) => {
       cocWar.timers.push(setTimeout(() => {
-        cocSend(guild, `📅 **${label} of preparation remaining!** Get your war bases ready!`);
+        cocSend(guild, `📅 **${CLAN_NAME}: ${label} of preparation remaining!** Get your war bases ready!`);
       }, t(cocWar.prepEndsAt - Date.now() - msBefore)));
     };
     prepRemainingCwl('6 hours', 6 * HOUR);
@@ -420,18 +422,18 @@ function cocScheduleNotifications(guild) {
         cocWar.timers.push(setTimeout(() => {
           cocWar.currentRound = round;
           cocSaveState();
-          cocSend(guild, `⚔️ **CWL Round ${round} has started!** Get your attacks in!`);
+          cocSend(guild, `⚔️ **${CLAN_NAME}: CWL Round ${round} has started!** Get your attacks in!`);
         }, t(roundDelay)));
 
         cocWar.timers.push(setTimeout(() => {
-          cocSend(guild, `⏰ **CWL Round ${round} - 6 hours left!** Don't forget to attack!`);
+          cocSend(guild, `⏰ **${CLAN_NAME}: CWL Round ${round} - 6 hours left!** Don't forget to attack!`);
         }, t(roundStart + 18 * HOUR - Date.now())));
       }
     }
 
     cocWar.timers.push(setTimeout(() => {
       cocClearState();
-      cocSend(guild, `🏁 **CWL has ended!** Well fought, clan! 🎉`);
+      cocSend(guild, `🏁 **${CLAN_NAME}: CWL has ended!** Well fought, clan! 🎉`);
     }, t(cocWar.battleEndsAt - Date.now())));
   }
 }
@@ -1249,8 +1251,8 @@ client.on('messageCreate', async (message) => {
 
         cocScheduleNotifications(message.guild);
 
-        await message.channel.send(`⚔️ **Normal War started!**\n📅 Preparation: ${cocFormatTime(prepMs)}\n⚔️ Battle: 24h\nTotal: ${cocFormatTime(prepMs + DAY)}`);
-        cocSend(message.guild, `🏰 **A Clan War has started!** Preparation phase is active. Get your bases ready!`);
+        await message.channel.send(`⚔️ **${CLAN_NAME}: Normal War started!**\n📅 Preparation: ${cocFormatTime(prepMs)}\n⚔️ Battle: 24h\nTotal: ${cocFormatTime(prepMs + DAY)}`);
+        cocSend(message.guild, `🏰 **${CLAN_NAME}: A Clan War has started!** Preparation phase is active. Get your bases ready!`);
 
       } else if (args[0] === 'start' && args[1] === 'cwl') {
         if (cocWar.phase && cocWar.phase !== 'ended') {
@@ -1271,8 +1273,8 @@ client.on('messageCreate', async (message) => {
 
         cocScheduleNotifications(message.guild);
 
-        await message.channel.send(`⚔️ **CWL started!**\n📅 Preparation: 24h\n⚔️ 7 Battle Rounds\nTotal: 8 days`);
-        cocSend(message.guild, `🏆 **Clan War League has started!** Prepare for 7 rounds of battles!`);
+        await message.channel.send(`⚔️ **${CLAN_NAME}: CWL started!**\n📅 Preparation: 24h\n⚔️ 7 Battle Rounds\nTotal: 8 days`);
+        cocSend(message.guild, `🏆 **${CLAN_NAME}: Clan War League has started!** Prepare for 7 rounds of battles!`);
 
       } else if (args[0] === 'status') {
         if (!cocWar.phase || cocWar.phase === 'ended') {
@@ -1290,7 +1292,7 @@ client.on('messageCreate', async (message) => {
         const embed = new EmbedBuilder()
           .setColor(cocWar.type === 'cwl' ? 0xFFD700 : 0x57F287)
           .setAuthor({ name: 'Clash of Clans' })
-          .setTitle(`🏰 ${cocWar.type.toUpperCase()} War`)
+          .setTitle(`🏰 ${CLAN_NAME}: ${cocWar.type.toUpperCase()} War`)
           .addFields(
             { name: `${phaseEmoji} Phase`, value: phaseName, inline: true },
             { name: '⏳ Time Remaining', value: cocFormatTime(remaining), inline: true },
@@ -1329,7 +1331,7 @@ client.on('messageCreate', async (message) => {
         cocClearState();
 
         await message.channel.send('❌ War cancelled.');
-        cocSend(message.guild, `❌ **The war has been cancelled.**`);
+        cocSend(message.guild, `❌ **${CLAN_NAME}: The war has been cancelled.**`);
 
       } else if (args[0] === 'end') {
         if (!cocWar.phase || cocWar.phase === 'ended') {
@@ -1342,7 +1344,7 @@ client.on('messageCreate', async (message) => {
         cocClearState();
 
         await message.channel.send('🏁 War ended manually.');
-        cocSend(message.guild, `🏁 **The war has ended!** Great effort, clan!`);
+        cocSend(message.guild, `🏁 **${CLAN_NAME}: The war has ended!** Great effort, clan!`);
 
       } else {
         await message.channel.send(
@@ -1485,8 +1487,8 @@ client.on('messageCreate', async (message) => {
 
         extScheduleNotifications(message.guild);
 
-        await message.channel.send(`⚔️ **Extension Clan: Normal War started!**\n📅 Preparation: ${cocFormatTime(prepMs)}\n⚔️ Battle: 24h\nTotal: ${cocFormatTime(prepMs + DAY)}`);
-        extSend(message.guild, `🏰 **Extension Clan War has started!** Preparation phase is active. Get your bases ready!`);
+        await message.channel.send(`⚔️ **${EXT_CLAN_NAME}: Normal War started!**\n📅 Preparation: ${cocFormatTime(prepMs)}\n⚔️ Battle: 24h\nTotal: ${cocFormatTime(prepMs + DAY)}`);
+        extSend(message.guild, `🏰 **${EXT_CLAN_NAME}: A Clan War has started!** Preparation phase is active. Get your bases ready!`);
 
       } else if (args[0] === 'start' && args[1] === 'cwl') {
         if (extWar.phase && extWar.phase !== 'ended') {
@@ -1507,8 +1509,8 @@ client.on('messageCreate', async (message) => {
 
         extScheduleNotifications(message.guild);
 
-        await message.channel.send(`⚔️ **Extension Clan CWL started!**\n📅 Preparation: 24h\n⚔️ 7 Battle Rounds\nTotal: 8 days`);
-        extSend(message.guild, `🏆 **Extension Clan War League has started!** Prepare for 7 rounds of battles!`);
+        await message.channel.send(`⚔️ **${EXT_CLAN_NAME}: CWL started!**\n📅 Preparation: 24h\n⚔️ 7 Battle Rounds\nTotal: 8 days`);
+        extSend(message.guild, `🏆 **${EXT_CLAN_NAME}: Clan War League has started!** Prepare for 7 rounds of battles!`);
 
       } else if (args[0] === 'status') {
         if (!extWar.phase || extWar.phase === 'ended') {
@@ -1526,7 +1528,7 @@ client.on('messageCreate', async (message) => {
         const embed = new EmbedBuilder()
           .setColor(extWar.type === 'cwl' ? 0xFFD700 : 0x57F287)
           .setAuthor({ name: 'Clash of Clans' })
-          .setTitle(`🏰 Extension Clan ${extWar.type.toUpperCase()} War`)
+          .setTitle(`🏰 ${EXT_CLAN_NAME}: ${extWar.type.toUpperCase()} War`)
           .addFields(
             { name: `${phaseEmoji} Phase`, value: phaseName, inline: true },
             { name: '⏳ Time Remaining', value: cocFormatTime(remaining), inline: true },
@@ -1565,7 +1567,7 @@ client.on('messageCreate', async (message) => {
         extClearState();
 
         await message.channel.send('❌ Extension clan war cancelled.');
-        extSend(message.guild, `❌ **The extension clan war has been cancelled.**`);
+        extSend(message.guild, `❌ **${EXT_CLAN_NAME}: The war has been cancelled.**`);
 
       } else if (args[0] === 'end') {
         if (!extWar.phase || extWar.phase === 'ended') {
@@ -1578,7 +1580,7 @@ client.on('messageCreate', async (message) => {
         extClearState();
 
         await message.channel.send('🏁 Extension clan war ended manually.');
-        extSend(message.guild, `🏁 **The extension clan war has ended!** Great effort!`);
+        extSend(message.guild, `🏁 **${EXT_CLAN_NAME}: The war has ended!** Great effort!`);
 
       } else {
         await message.channel.send(
