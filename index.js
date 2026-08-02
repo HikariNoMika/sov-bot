@@ -267,6 +267,7 @@ function extScheduleNotifications(guild) {
 
     // CWL prep-phase countdown
     const prepRemainingCwl = (label, msBefore) => {
+      if (extWar.phase !== 'preparation') return;
       sched(extWar.prepEndsAt - Date.now() - msBefore, () => {
         extSend(guild, `📅 **${EXT_CLAN_NAME}: ${label} of preparation remaining!** Get your war bases ready!`);
       });
@@ -408,6 +409,7 @@ function cocScheduleNotifications(guild) {
 
     // CWL prep-phase countdown
     const prepRemainingCwl = (label, msBefore) => {
+      if (cocWar.phase !== 'preparation') return;
       sched(cocWar.prepEndsAt - Date.now() - msBefore, () => {
         cocSend(guild, `📅 **${CLAN_NAME}: ${label} of preparation remaining!** Get your war bases ready!`);
       });
@@ -1356,6 +1358,7 @@ client.on('messageCreate', async (message) => {
           '`!coc start war [time]` - Start normal war (mods only)\n' +
           '`!coc start war 23:30` - With custom prep time (23h 30m)\n' +
           '`!coc start cwl` - Start CWL (mods only)\n' +
+          '`!cwl start day<N> HH:MM` - Start CWL with a round start time (mods)\n' +
           '`!cwl day<N> HH:MM` - Override CWL round time (mods)\n' +
           '`!cwl status` - Show CWL round schedule\n' +
           '`!coc cancel` - Cancel current war (mods only)\n' +
@@ -1387,6 +1390,57 @@ client.on('messageCreate', async (message) => {
           lines.push(`${marker}Round ${r}: ${status} <t:${Math.floor(start / 1000)}:t>${overridden}`);
         }
         await message.channel.send(`**📋 CWL Round Schedule**\n${lines.join('\n')}`);
+        return;
+      }
+
+      if (args[0] === 'start') {
+        if (cocWar.phase && cocWar.phase !== 'ended') {
+          await message.channel.send('⚠️ A war is already ongoing! Use `!coc cancel` first.');
+          return;
+        }
+
+        const startDayMatch = args[1] && args[1].match(/^day(\d)$/i);
+        if (!startDayMatch || !args[2]) {
+          await message.channel.send('⚠️ Usage: `!cwl start day<N> HH:MM` e.g. `!cwl start day1 22:58`');
+          return;
+        }
+        const startRound = parseInt(startDayMatch[1]);
+        if (startRound < 1 || startRound > 7) {
+          await message.channel.send('⚠️ Day must be 1-7.');
+          return;
+        }
+        const timeMatch = args[2].match(/^(\d{1,2}):(\d{2})$/);
+        if (!timeMatch) {
+          await message.channel.send('⚠️ Invalid time. Use `HH:MM` format, e.g. `!cwl start day1 22:58`.');
+          return;
+        }
+
+        const target = new Date();
+        target.setHours(parseInt(timeMatch[1]), parseInt(timeMatch[2]), 0, 0);
+        if (target <= new Date()) target.setDate(target.getDate() + 1);
+
+        // Round N starts at target; Round 1 starts (N-1) days earlier
+        const round1Start = target.getTime() - (startRound - 1) * DAY;
+        const now = Date.now();
+        if (round1Start <= now) {
+          await message.channel.send(`⚠️ Round ${startRound} start time would begin the war in the past. Pick a later time.`);
+          return;
+        }
+
+        cocWar.type = 'cwl';
+        cocWar.phase = 'battle';
+        cocWar.currentRound = 1;
+        cocWar.startedAt = now;
+        cocWar.prepEndsAt = round1Start;
+        cocWar.roundOverrides = {};
+        cocCalcRoundStartTimes();
+        cocWar.guildId = message.guild.id;
+        cocSaveState();
+
+        cocScheduleNotifications(message.guild);
+
+        await message.channel.send(`⚔️ **${CLAN_NAME}: CWL started!**\n⚔️ Round ${startRound} starts: <t:${Math.floor(target.getTime() / 1000)}:t>\n⚔️ 7 Battle Rounds\nTotal: ${cocFormatTime(cocWar.battleEndsAt - now)}`);
+        cocSend(message.guild, `🏆 **${CLAN_NAME}: Clan War League has started!** Round ${startRound} starts at **${args[2]}**.`);
         return;
       }
 
@@ -1438,7 +1492,7 @@ client.on('messageCreate', async (message) => {
         return;
       }
 
-      await message.channel.send('Usage: `!cwl day<N> HH:MM` or `!cwl status`');
+      await message.channel.send('Usage: `!cwl start day<N> HH:MM`, `!cwl day<N> HH:MM`, or `!cwl status`');
       return;
     }
 
@@ -1607,22 +1661,54 @@ client.on('messageCreate', async (message) => {
     if (content.startsWith('!ext cwl ') && canReview(message.member)) {
       const args = content.slice(9).trim().split(/\s+/);
 
-      if (args[0] === 'status') {
-        if (extWar.type !== 'cwl') {
-          await message.channel.send('📭 No ongoing extension CWL season. Start one with `!ext start cwl`.');
+      if (args[0] === 'start') {
+        if (extWar.phase && extWar.phase !== 'ended') {
+          await message.channel.send('⚠️ An extension clan war is already ongoing! Use `!ext cancel` first.');
           return;
         }
-        const now = Date.now();
-        const round = extCurrentRound();
-        const lines = [];
-        for (let r = 1; r <= 7; r++) {
-          const start = extWar.roundStartTimes[r];
-          const marker = r === round ? '▶ ' : '  ';
-          const overridden = extWar.roundOverrides[r] ? ' (overridden)' : '';
-          const status = now >= start ? '✅' : '⏳';
-          lines.push(`${marker}Round ${r}: ${status} <t:${Math.floor(start / 1000)}:t>${overridden}`);
+
+        const startDayMatch = args[1] && args[1].match(/^day(\d)$/i);
+        if (!startDayMatch || !args[2]) {
+          await message.channel.send('⚠️ Usage: `!ext cwl start day<N> HH:MM` e.g. `!ext cwl start day1 22:58`');
+          return;
         }
-        await message.channel.send(`**📋 Extension Clan CWL Round Schedule**\n${lines.join('\n')}`);
+        const startRound = parseInt(startDayMatch[1]);
+        if (startRound < 1 || startRound > 7) {
+          await message.channel.send('⚠️ Day must be 1-7.');
+          return;
+        }
+        const timeMatch = args[2].match(/^(\d{1,2}):(\d{2})$/);
+        if (!timeMatch) {
+          await message.channel.send('⚠️ Invalid time. Use `HH:MM` format, e.g. `!ext cwl start day1 22:58`.');
+          return;
+        }
+
+        const target = new Date();
+        target.setHours(parseInt(timeMatch[1]), parseInt(timeMatch[2]), 0, 0);
+        if (target <= new Date()) target.setDate(target.getDate() + 1);
+
+        // Round N starts at target; Round 1 starts (N-1) days earlier
+        const round1Start = target.getTime() - (startRound - 1) * DAY;
+        const now = Date.now();
+        if (round1Start <= now) {
+          await message.channel.send(`⚠️ Round ${startRound} start time would begin the war in the past. Pick a later time.`);
+          return;
+        }
+
+        extWar.type = 'cwl';
+        extWar.phase = 'battle';
+        extWar.currentRound = 1;
+        extWar.startedAt = now;
+        extWar.prepEndsAt = round1Start;
+        extWar.roundOverrides = {};
+        extCalcRoundStartTimes();
+        extWar.guildId = message.guild.id;
+        extSaveState();
+
+        extScheduleNotifications(message.guild);
+
+        await message.channel.send(`⚔️ **${EXT_CLAN_NAME}: CWL started!**\n⚔️ Round ${startRound} starts: <t:${Math.floor(target.getTime() / 1000)}:t>\n⚔️ 7 Battle Rounds\nTotal: ${cocFormatTime(extWar.battleEndsAt - now)}`);
+        extSend(message.guild, `🏆 **${EXT_CLAN_NAME}: Clan War League has started!** Round ${startRound} starts at **${args[2]}**.`);
         return;
       }
 
