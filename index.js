@@ -841,14 +841,28 @@ client.on('messageCreate', async (message) => {
           const fetched = await message.channel.messages.fetch({ limit: batch + 1 });
           const toDelete = fetched.filter(m => m.id !== message.id).first(batch);
           if (!toDelete.length) break;
-          const result = await message.channel.bulkDelete(toDelete, true);
-          deleted += result.size;
+          try {
+            const result = await message.channel.bulkDelete(toDelete, true);
+            deleted += result.size;
+          } catch (e) {
+            // bulkDelete fails on >14-day-old messages; delete individually instead
+            for (const m of toDelete) {
+              if (deleted >= num) break;
+              try {
+                await m.delete();
+                deleted++;
+              } catch (err) {
+                console.log('!clear individual delete failed:', err.message);
+              }
+            }
+          }
         }
         await message.delete().catch(() => {});
         const msg = await message.channel.send(`🗑️ Deleted **${deleted}** messages.`);
         setTimeout(() => msg.delete().catch(() => {}), 3000);
       } catch (e) {
-        await message.channel.send('❌ Failed to delete messages. Messages may be older than 14 days or I lack permissions.');
+        console.log('!clear error:', e);
+        await message.channel.send('❌ Failed to delete messages. Make sure I have **Manage Messages** permission in this channel.');
       }
       return;
     }
