@@ -1306,14 +1306,14 @@ client.on('messageCreate', async (message) => {
 
         if (cocWar.type === 'cwl') {
           const round = cocCurrentRound();
-          embed.addFields({ name: '🔄 Current Round', value: round === 0 ? 'Prep' : `Round ${round}`, inline: true });
+          embed.addFields({ name: '🔄 Current Day', value: round === 0 ? 'Prep' : `Day ${round}`, inline: true });
           if (cocWar.roundStartTimes.length) {
             let schedule = '';
             for (let r = 1; r <= 7; r++) {
               const start = cocWar.roundStartTimes[r];
               const marker = r === round ? '**▶' : '';
               const end = r === round ? '◀**' : '';
-              const label = cocWar.roundOverrides[r] ? `~R${r}` : `R${r}`;
+              const label = cocWar.roundOverrides[r] ? `~D${r}` : `D${r}`;
               schedule += `${marker}${label}: <t:${Math.floor(start / 1000)}:t>${end}\n`;
             }
             embed.addFields({ name: '📋 Round Schedule', value: schedule.trim(), inline: false });
@@ -1376,7 +1376,7 @@ client.on('messageCreate', async (message) => {
 
       if (args[0] === 'status') {
         if (cocWar.type !== 'cwl') {
-          await message.channel.send('📭 No ongoing CWL season. Start one with `!coc start cwl`.');
+          await message.channel.send('📭 No ongoing CWL season. Start one with `!coc start cwl` (24h prep) or `!cwl start day<N> HH:MM` (direct start).');
           return;
         }
         const now = Date.now();
@@ -1387,9 +1387,10 @@ client.on('messageCreate', async (message) => {
           const marker = r === round ? '▶ ' : '  ';
           const overridden = cocWar.roundOverrides[r] ? ' (overridden)' : '';
           const status = now >= start ? '✅' : '⏳';
-          lines.push(`${marker}Round ${r}: ${status} <t:${Math.floor(start / 1000)}:t>${overridden}`);
+          lines.push(`${marker}Day ${r}: ${status} <t:${Math.floor(start / 1000)}:t>${overridden}`);
         }
-        await message.channel.send(`**📋 CWL Round Schedule**\n${lines.join('\n')}`);
+        const currentLabel = round === 0 ? 'Prep phase' : `Day ${round}`;
+        await message.channel.send(`**📋 CWL Round Schedule**\n**▶ Current: ${currentLabel}**\n${lines.join('\n')}`);
         return;
       }
 
@@ -1464,7 +1465,7 @@ client.on('messageCreate', async (message) => {
         }
 
         if (cocWar.type !== 'cwl') {
-          await message.channel.send('📭 No ongoing CWL season. Start one with `!coc start cwl`.');
+          await message.channel.send('📭 No ongoing CWL season. Start one with `!coc start cwl` (24h prep) or `!cwl start day<N> HH:MM` (direct start).');
           return;
         }
 
@@ -1594,14 +1595,14 @@ client.on('messageCreate', async (message) => {
 
         if (extWar.type === 'cwl') {
           const round = extCurrentRound();
-          embed.addFields({ name: '🔄 Current Round', value: round === 0 ? 'Prep' : `Round ${round}`, inline: true });
+          embed.addFields({ name: '🔄 Current Day', value: round === 0 ? 'Prep' : `Day ${round}`, inline: true });
           if (extWar.roundStartTimes.length) {
             let schedule = '';
             for (let r = 1; r <= 7; r++) {
               const start = extWar.roundStartTimes[r];
               const marker = r === round ? '**▶' : '';
               const end = r === round ? '◀**' : '';
-              const label = extWar.roundOverrides[r] ? `~R${r}` : `R${r}`;
+              const label = extWar.roundOverrides[r] ? `~D${r}` : `D${r}`;
               schedule += `${marker}${label}: <t:${Math.floor(start / 1000)}:t>${end}\n`;
             }
             embed.addFields({ name: '📋 Round Schedule', value: schedule.trim(), inline: false });
@@ -1660,6 +1661,26 @@ client.on('messageCreate', async (message) => {
     // --------------------------------------------
     if (content.startsWith('!ext cwl ') && canReview(message.member)) {
       const args = content.slice(9).trim().split(/\s+/);
+
+      if (args[0] === 'status') {
+        if (extWar.type !== 'cwl') {
+          await message.channel.send('📭 No ongoing extension CWL season. Start one with `!ext start cwl` (24h prep) or `!ext cwl start day<N> HH:MM` (direct start).');
+          return;
+        }
+        const now = Date.now();
+        const round = extCurrentRound();
+        const lines = [];
+        for (let r = 1; r <= 7; r++) {
+          const start = extWar.roundStartTimes[r];
+          const marker = r === round ? '▶ ' : '  ';
+          const overridden = extWar.roundOverrides[r] ? ' (overridden)' : '';
+          const status = now >= start ? '✅' : '⏳';
+          lines.push(`${marker}Day ${r}: ${status} <t:${Math.floor(start / 1000)}:t>${overridden}`);
+        }
+        const currentLabel = round === 0 ? 'Prep phase' : `Day ${round}`;
+        await message.channel.send(`**📋 ${EXT_CLAN_NAME} CWL Round Schedule**\n**▶ Current: ${currentLabel}**\n${lines.join('\n')}`);
+        return;
+      }
 
       if (args[0] === 'start') {
         if (extWar.phase && extWar.phase !== 'ended') {
@@ -1732,7 +1753,7 @@ client.on('messageCreate', async (message) => {
         }
 
         if (extWar.type !== 'cwl') {
-          await message.channel.send('📭 No ongoing extension CWL season. Start one with `!ext start cwl`.');
+          await message.channel.send('📭 No ongoing extension CWL season. Start one with `!ext start cwl` (24h prep) or `!ext cwl start day<N> HH:MM` (direct start).');
           return;
         }
 
