@@ -324,6 +324,41 @@ function extCurrentRound() {
   return 1;
 }
 
+async function extCwlOverride(message, round, timeStr, prefix) {
+  if (extWar.type !== 'cwl') {
+    await message.channel.send('📭 No ongoing extension CWL season. Start one with `!ext start cwl` (24h prep) or `!ext cwl start day<N> HH:MM` (direct start).');
+    return;
+  }
+
+  if (round <= extCurrentRound()) {
+    await message.channel.send(`⚠️ Round ${round} has already started or ended. Cannot override.`);
+    return;
+  }
+
+  const timeMatch = timeStr.match(/^(\d{1,2}):(\d{2})$/);
+  if (!timeMatch) {
+    await message.channel.send(`⚠️ Invalid time. Use \`HH:MM\` format, e.g. \`${prefix} day2 22:58\`.`);
+    return;
+  }
+
+  const target = new Date();
+  target.setHours(parseInt(timeMatch[1]), parseInt(timeMatch[2]), 0, 0);
+  if (target <= new Date()) target.setDate(target.getDate() + 1);
+
+  // Check it doesn't overlap with previous round
+  const prevEnd = extWar.roundStartTimes[round - 1] + DAY;
+  if (target.getTime() < prevEnd) {
+    await message.channel.send(`⚠️ Round ${round} cannot start before previous round ends (${new Date(prevEnd).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}).`);
+    return;
+  }
+
+  extWar.roundOverrides[round] = target.getTime();
+  extCalcRoundStartTimes();
+  extScheduleNotifications(message.guild);
+
+  await message.channel.send(`✅ **Round ${round}** overridden to start at **${timeStr}**.`);
+}
+
 function cocSend(guild, content) {
   const channels = [config.cocChannelId, config.generalChannelId].filter(Boolean);
   if (!channels.length) return console.log('cocSend: no channels configured');
@@ -476,6 +511,41 @@ function cocCurrentRound() {
     if (now >= cocWar.roundStartTimes[r]) return r;
   }
   return 1;
+}
+
+async function cocCwlOverride(message, round, timeStr, prefix) {
+  if (cocWar.type !== 'cwl') {
+    await message.channel.send('📭 No ongoing CWL season. Start one with `!coc start cwl` (24h prep) or `!cwl start day<N> HH:MM` (direct start).');
+    return;
+  }
+
+  if (round <= cocCurrentRound()) {
+    await message.channel.send(`⚠️ Round ${round} has already started or ended. Cannot override.`);
+    return;
+  }
+
+  const timeMatch = timeStr.match(/^(\d{1,2}):(\d{2})$/);
+  if (!timeMatch) {
+    await message.channel.send(`⚠️ Invalid time. Use \`HH:MM\` format, e.g. \`${prefix} day2 22:58\`.`);
+    return;
+  }
+
+  const target = new Date();
+  target.setHours(parseInt(timeMatch[1]), parseInt(timeMatch[2]), 0, 0);
+  if (target <= new Date()) target.setDate(target.getDate() + 1);
+
+  // Check it doesn't overlap with previous round
+  const prevEnd = cocWar.roundStartTimes[round - 1] + DAY;
+  if (target.getTime() < prevEnd) {
+    await message.channel.send(`⚠️ Round ${round} cannot start before previous round ends (${new Date(prevEnd).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}).`);
+    return;
+  }
+
+  cocWar.roundOverrides[round] = target.getTime();
+  cocCalcRoundStartTimes();
+  cocScheduleNotifications(message.guild);
+
+  await message.channel.send(`✅ **Round ${round}** overridden to start at **${timeStr}**.`);
 }
 
 client.once('ready', () => {
@@ -753,14 +823,15 @@ client.on('messageCreate', async (message) => {
       return;
     }
 
-    if (content.startsWith('!clear ')) {
+    if (content === '!clear' || content.startsWith('!clear ')) {
       if (!canReview(message.member)) {
         await message.channel.send('❌ You need the **Sov** role or Admin permissions to use this command.');
         return;
       }
-      const num = parseInt(content.split(' ')[1]);
-      if (!num || num < 1 || num > 100) {
-        await message.channel.send('⚠️ Usage: `!clear <1-100>` — deletes that many messages.');
+      const parts = content.split(' ');
+      const num = parts[1] ? parseInt(parts[1]) : 100;
+      if (num < 1 || num > 100) {
+        await message.channel.send('⚠️ Usage: `!clear <1-100>` — deletes that many messages, or `!clear` alone clears 100.');
         return;
       }
       try {
@@ -1395,12 +1466,23 @@ client.on('messageCreate', async (message) => {
       }
 
       if (args[0] === 'start') {
+        const startDayMatch = args[1] && args[1].match(/^day(\d)$/i);
+
+        // If a CWL is already active, interpret as override
+        if (cocWar.type === 'cwl' && cocWar.phase && cocWar.phase !== 'ended') {
+          if (!startDayMatch || !args[2]) {
+            await message.channel.send('⚠️ A CWL is already running. Use `!cwl start day<N> HH:MM` to override a round time.');
+            return;
+          }
+          await cocCwlOverride(message, parseInt(startDayMatch[1]), args[2], '!cwl start day<N>');
+          return;
+        }
+
         if (cocWar.phase && cocWar.phase !== 'ended') {
           await message.channel.send('⚠️ A war is already ongoing! Use `!coc cancel` first.');
           return;
         }
 
-        const startDayMatch = args[1] && args[1].match(/^day(\d)$/i);
         if (!startDayMatch || !args[2]) {
           await message.channel.send('⚠️ Usage: `!cwl start day<N> HH:MM` e.g. `!cwl start day1 22:58`');
           return;
@@ -1453,38 +1535,7 @@ client.on('messageCreate', async (message) => {
           return;
         }
 
-        const timeMatch = args[1].match(/^(\d{1,2}):(\d{2})$/);
-        if (!timeMatch) {
-          await message.channel.send('⚠️ Invalid time. Use `HH:MM` format, e.g. `!cwl day2 22:58`.');
-          return;
-        }
-
-        if (cocWar.type !== 'cwl') {
-          await message.channel.send('📭 No ongoing CWL season. Start one with `!coc start cwl` (24h prep) or `!cwl start day<N> HH:MM` (direct start).');
-          return;
-        }
-
-        if (round <= cocCurrentRound()) {
-          await message.channel.send(`⚠️ Round ${round} has already started or ended. Cannot override.`);
-          return;
-        }
-
-        const target = new Date();
-        target.setHours(parseInt(timeMatch[1]), parseInt(timeMatch[2]), 0, 0);
-        if (target <= new Date()) target.setDate(target.getDate() + 1);
-
-        // Check it doesn't overlap with previous round
-        const prevEnd = cocWar.roundStartTimes[round - 1] + DAY;
-        if (target.getTime() < prevEnd) {
-          await message.channel.send(`⚠️ Round ${round} cannot start before previous round ends (${new Date(prevEnd).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}).`);
-          return;
-        }
-
-        cocWar.roundOverrides[round] = target.getTime();
-        cocCalcRoundStartTimes();
-        cocScheduleNotifications(message.guild);
-
-        await message.channel.send(`✅ **Round ${round}** overridden to start at **${args[1]}**.`);
+        await cocCwlOverride(message, round, args[1], '!cwl day<N>');
         return;
       }
 
@@ -1678,12 +1729,23 @@ client.on('messageCreate', async (message) => {
       }
 
       if (args[0] === 'start') {
+        const startDayMatch = args[1] && args[1].match(/^day(\d)$/i);
+
+        // If a CWL is already active, interpret as override
+        if (extWar.type === 'cwl' && extWar.phase && extWar.phase !== 'ended') {
+          if (!startDayMatch || !args[2]) {
+            await message.channel.send('⚠️ An extension CWL is already running. Use `!ext cwl start day<N> HH:MM` to override a round time.');
+            return;
+          }
+          await extCwlOverride(message, parseInt(startDayMatch[1]), args[2], '!ext cwl start day<N>');
+          return;
+        }
+
         if (extWar.phase && extWar.phase !== 'ended') {
           await message.channel.send('⚠️ An extension clan war is already ongoing! Use `!ext cancel` first.');
           return;
         }
 
-        const startDayMatch = args[1] && args[1].match(/^day(\d)$/i);
         if (!startDayMatch || !args[2]) {
           await message.channel.send('⚠️ Usage: `!ext cwl start day<N> HH:MM` e.g. `!ext cwl start day1 22:58`');
           return;
@@ -1736,38 +1798,7 @@ client.on('messageCreate', async (message) => {
           return;
         }
 
-        const timeMatch = args[1].match(/^(\d{1,2}):(\d{2})$/);
-        if (!timeMatch) {
-          await message.channel.send('⚠️ Invalid time. Use `HH:MM` format, e.g. `!ext cwl day2 22:58`.');
-          return;
-        }
-
-        if (extWar.type !== 'cwl') {
-          await message.channel.send('📭 No ongoing extension CWL season. Start one with `!ext start cwl` (24h prep) or `!ext cwl start day<N> HH:MM` (direct start).');
-          return;
-        }
-
-        if (round <= extCurrentRound()) {
-          await message.channel.send(`⚠️ Round ${round} has already started or ended. Cannot override.`);
-          return;
-        }
-
-        const target = new Date();
-        target.setHours(parseInt(timeMatch[1]), parseInt(timeMatch[2]), 0, 0);
-        if (target <= new Date()) target.setDate(target.getDate() + 1);
-
-        // Check it doesn't overlap with previous round
-        const prevEnd = extWar.roundStartTimes[round - 1] + DAY;
-        if (target.getTime() < prevEnd) {
-          await message.channel.send(`⚠️ Round ${round} cannot start before previous round ends (${new Date(prevEnd).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}).`);
-          return;
-        }
-
-        extWar.roundOverrides[round] = target.getTime();
-        extCalcRoundStartTimes();
-        extScheduleNotifications(message.guild);
-
-        await message.channel.send(`✅ **Round ${round}** overridden to start at **${args[1]}**.`);
+        await extCwlOverride(message, round, args[1], '!ext cwl day<N>');
         return;
       }
 
