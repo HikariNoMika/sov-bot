@@ -183,7 +183,7 @@ function extClearState() {
 extLoadState();
 
 function extSend(guild, content) {
-  const channels = [config.cocChannelId, config.generalChannelId].filter(Boolean);
+  const channels = [config.extChannelId || config.cocChannelId].filter(Boolean);
   if (!channels.length) return console.log('extSend: no channels configured');
   for (const id of new Set(channels)) {
     const ch = guild.channels.cache.get(id);
