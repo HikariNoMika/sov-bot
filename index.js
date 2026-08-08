@@ -829,20 +829,23 @@ client.on('messageCreate', async (message) => {
         return;
       }
       const parts = content.split(' ');
-      const num = parts[1] ? parseInt(parts[1]) : 100;
-      if (num < 1 || num > 100) {
-        await message.channel.send('⚠️ Usage: `!clear <1-100>` — deletes that many messages, or `!clear` alone clears 100.');
+      const num = parts[1] ? parseInt(parts[1]) : 300;
+      if (num < 1 || num > 300) {
+        await message.channel.send('⚠️ Usage: `!clear <1-300>` — deletes that many messages, or `!clear` alone clears 300.');
         return;
       }
       try {
-        const limit = Math.min(num, 100);
-        const fetched = await message.channel.messages.fetch({ limit: limit + 1 });
-        const toDelete = fetched.filter(m => m.id !== message.id).first(limit);
-        if (toDelete.length) {
-          await message.channel.bulkDelete(toDelete, true);
+        let deleted = 0;
+        while (deleted < num) {
+          const batch = Math.min(100, num - deleted);
+          const fetched = await message.channel.messages.fetch({ limit: batch + 1 });
+          const toDelete = fetched.filter(m => m.id !== message.id).first(batch);
+          if (!toDelete.length) break;
+          const result = await message.channel.bulkDelete(toDelete, true);
+          deleted += result.size;
         }
         await message.delete().catch(() => {});
-        const msg = await message.channel.send(`🗑️ Deleted **${num}** messages.`);
+        const msg = await message.channel.send(`🗑️ Deleted **${deleted}** messages.`);
         setTimeout(() => msg.delete().catch(() => {}), 3000);
       } catch (e) {
         await message.channel.send('❌ Failed to delete messages. Messages may be older than 14 days or I lack permissions.');
