@@ -1423,10 +1423,6 @@ client.on('messageCreate', async (message) => {
         // Round N starts at target; Round 1 starts (N-1) days earlier
         const round1Start = target.getTime() - (startRound - 1) * DAY;
         const now = Date.now();
-        if (round1Start <= now) {
-          await message.channel.send(`⚠️ Round ${startRound} start time would begin the war in the past. Pick a later time.`);
-          return;
-        }
 
         cocWar.type = 'cwl';
         cocWar.phase = 'battle';
@@ -1711,10 +1707,6 @@ client.on('messageCreate', async (message) => {
         // Round N starts at target; Round 1 starts (N-1) days earlier
         const round1Start = target.getTime() - (startRound - 1) * DAY;
         const now = Date.now();
-        if (round1Start <= now) {
-          await message.channel.send(`⚠️ Round ${startRound} start time would begin the war in the past. Pick a later time.`);
-          return;
-        }
 
         extWar.type = 'cwl';
         extWar.phase = 'battle';
