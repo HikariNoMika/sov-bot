@@ -1418,7 +1418,6 @@ client.on('messageCreate', async (message) => {
 
         const target = new Date();
         target.setHours(parseInt(timeMatch[1]), parseInt(timeMatch[2]), 0, 0);
-        if (target <= new Date()) target.setDate(target.getDate() + 1);
 
         // Round N starts at target; Round 1 starts (N-1) days earlier
         const round1Start = target.getTime() - (startRound - 1) * DAY;
@@ -1702,7 +1701,6 @@ client.on('messageCreate', async (message) => {
 
         const target = new Date();
         target.setHours(parseInt(timeMatch[1]), parseInt(timeMatch[2]), 0, 0);
-        if (target <= new Date()) target.setDate(target.getDate() + 1);
 
         // Round N starts at target; Round 1 starts (N-1) days earlier
         const round1Start = target.getTime() - (startRound - 1) * DAY;
